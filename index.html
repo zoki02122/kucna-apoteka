@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#28402F">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Kućna apoteka</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EAE1C7; --bg-card:#FFFFFE; --bg-elevated:#E1D5B4;
+    --green:#3F6650; --green-deep:#28402F; --green-pale:#E3E9E0;
+    --amber:#A9763F; --amber-pale:#EFE6D5;
+    --coral:#9C5240; --coral-pale:#EEE0DA;
+    --text:#2B2B24; --text-dim:#7A7458; --line:#D6C79E;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  button, .med-card, .grid-card, .expiry-chip{ transition:transform 0.1s ease, opacity 0.1s ease; }
+  button:active, .med-card:active, .grid-card:active, .expiry-chip:active{ transform:scale(0.96); opacity:0.85; }
+  html,body{ margin:0; padding:0; min-height:100%; background:var(--bg); color:var(--text);
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; overscroll-behavior:none; }
+  .serif{ font-family:"Fraunces","Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif; font-optical-sizing:auto; }
+  #app{ max-width:520px; margin:0 auto; padding:0 0 110px; min-height:100vh; position:relative; }
+
+  /* ---- Topbar ---- */
+  .topbar{ position:sticky; top:0; z-index:10; background:var(--bg); padding:16px 16px 8px; }
+  .topbar-row{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .app-title{ flex:1; font-size:21px; font-weight:600; color:var(--green-deep); letter-spacing:0.2px; }
+  .icon-btn{ width:38px; height:38px; border-radius:11px; background:var(--bg-card); border:1px solid var(--line); color:var(--green-deep); font-size:15px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none; box-shadow:0 1px 2px rgba(43,43,36,0.05); }
+  .search-wrap{ display:flex; align-items:center; background:var(--bg-card); border:1px solid var(--line); border-radius:12px; padding:0 4px 0 13px; box-shadow:0 1px 2px rgba(43,43,36,0.05); }
+  .search-wrap input{ flex:1; border:none; background:transparent; padding:10px 8px; font-size:14px; color:var(--text); font-family:inherit; }
+  .search-wrap input::placeholder{ color:var(--text-dim); }
+  .search-wrap .sicon{ color:var(--text-dim); font-size:13px; }
+
+  /* ---- Expiry banner ---- */
+  .expiry-strip{ margin:0 0 0; background:var(--amber-pale); border:1px solid #E3CFAE; border-radius:14px; padding:10px 12px 9px; }
+  .expiry-strip-title{ font-size:11px; font-weight:700; color:var(--amber); text-transform:none; letter-spacing:0.2px; margin-bottom:7px; padding-left:2px; }
+  .expiry-chip-row{ display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; }
+  .expiry-chip{ flex:none; background:var(--bg-card); border:1px solid #EBD2B8; border-radius:10px; padding:6px 10px; display:flex; flex-direction:column; gap:1px; min-width:84px; max-width:110px; cursor:pointer; }
+  .expiry-chip.expired{ background:var(--coral-pale); border-color:#E8C4B9; }
+  .expiry-chip .en{ font-size:11.5px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:94px; }
+  .expiry-chip .ed{ font-size:9.5px; color:var(--amber); font-weight:600; }
+  .expiry-chip.expired .ed{ color:var(--coral); }
+
+  /* ---- List ---- */
+  .list-area{ padding:0 16px; }
+  .section-label{ font-size:11px; font-weight:700; color:var(--text-dim); letter-spacing:0.2px; padding:4px 2px 8px; }
+  .med-card{ display:flex; align-items:center; gap:12px; background:var(--bg-card); border:1px solid var(--line); border-radius:16px; padding:11px 13px; margin-bottom:9px; cursor:pointer; box-shadow:0 2px 4px rgba(43,43,36,0.07), 0 4px 12px rgba(43,43,36,0.08); }
+  .med-thumb{ width:52px; height:52px; border-radius:12px; background:var(--green-pale); display:flex; align-items:center; justify-content:center; font-size:22px; flex:none; overflow:hidden; }
+  .med-thumb img{ width:100%; height:100%; object-fit:cover; }
+  .med-info{ flex:1; min-width:0; }
+  .med-name{ font-size:15.5px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .med-sub{ font-size:12px; color:var(--text-dim); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .med-badge{ flex:none; font-size:10.5px; font-weight:700; padding:4px 9px; border-radius:20px; white-space:nowrap; }
+  .badge-ok{ background:var(--green-pale); color:var(--green-deep); }
+  .badge-soon{ background:var(--amber-pale); color:var(--amber); }
+  .badge-expired{ background:var(--coral-pale); color:var(--coral); }
+  .badge-missing{ background:var(--bg-elevated); color:var(--text-dim); }
+
+  .empty{ text-align:center; color:var(--text-dim); padding:60px 24px; font-size:14.5px; line-height:1.7; }
+
+  /* ---- Bottom bar ---- */
+  .bottom-bar{ position:fixed; bottom:0; left:0; right:0; max-width:520px; margin:0 auto; padding:10px 14px calc(10px + env(safe-area-inset-bottom)); background:var(--bg); border-top:1px solid var(--line); box-shadow:0 -4px 14px rgba(43,43,36,0.06); }
+  .entry-row{ display:flex; gap:8px; align-items:center; }
+  .plus-btn{ width:46px; height:46px; border-radius:50%; border:1px solid var(--line); background:var(--bg-card); color:var(--green-deep); font-size:22px; font-weight:600; display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none; line-height:1; box-shadow:0 1px 3px rgba(43,43,36,0.08); }
+  .chat-btn{ font-size:18px; border-color:#CBD9C7; background:linear-gradient(150deg, var(--green-pale), #D7E3D3); }
+  .entry-input-wrap{ flex:1; min-width:0; position:relative; display:flex; align-items:center; background:var(--bg-card); border:1px solid var(--line); border-radius:24px; padding:4px 4px 4px 15px; }
+  .entry-input-wrap input{ flex:1; min-width:0; border:none; background:transparent; padding:9px 6px; font-size:14.5px; color:var(--text); font-family:inherit; }
+  .entry-input-wrap input::placeholder{ color:var(--text-dim); }
+  .send-btn{ width:50px; height:50px; border-radius:50%; border:none; background:linear-gradient(150deg, var(--green), var(--green-deep)); color:#fff; font-size:19px; cursor:pointer; flex:none; box-shadow:0 3px 10px rgba(40,64,47,0.35); }
+
+  /* ---- Modal / overlay ---- */
+  .modal-backdrop{ position:fixed; inset:0; background:rgba(20,26,20,0.45); display:flex; align-items:flex-end; justify-content:center; z-index:30; }
+  .modal-backdrop.top{ align-items:flex-start; padding-top:0; }
+  .modal{ background:#fff; width:100%; max-width:520px; border-radius:22px 22px 0 0; padding:22px 18px calc(22px + env(safe-area-inset-bottom)); max-height:90vh; overflow-y:auto; box-sizing:border-box; position:relative; box-shadow:0 -8px 30px rgba(20,26,20,0.18); }
+  .modal.full{ border-radius:0; max-height:100vh; height:100vh; padding-top:0; }
+  .modal-close-x{ position:absolute; top:16px; right:16px; width:32px; height:32px; border-radius:50%; border:none; background:var(--bg-elevated); color:var(--text-dim); font-size:15px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:5; }
+  .modal h2{ margin:0 0 16px; font-size:19px; color:var(--green-deep); padding-right:34px; }
+
+  .field{ margin-bottom:14px; }
+  .field label{ font-size:12.5px; color:var(--text-dim); display:block; margin-bottom:6px; font-weight:600; }
+  .field input, .field select, .field textarea{ width:100%; padding:11px 12px; border-radius:11px; border:1px solid var(--line); background:var(--bg-elevated); color:var(--text); font-size:14.5px; font-family:inherit; }
+  .field textarea{ resize:vertical; min-height:56px; }
+  .field-hint{ font-size:11px; color:var(--text-dim); margin-top:5px; line-height:1.4; }
+  .field-warn{ font-size:11.5px; color:var(--amber); margin-top:5px; font-weight:600; }
+
+  .modal-actions{ display:flex; gap:10px; margin-top:6px; }
+  .modal-actions button{ flex:1; padding:13px; border-radius:13px; border:none; font-size:14.5px; font-weight:700; cursor:pointer; }
+  .cancel-btn{ background:var(--bg-elevated); color:var(--text); }
+  .save-btn{ background:linear-gradient(150deg, var(--green), var(--green-deep)); color:#fff; }
+  .delete-btn{ background:var(--coral); color:#fff; }
+
+  /* ---- Detail overlay ---- */
+  .detail-hero{ background:linear-gradient(155deg, var(--green-pale), #EFF4EC); padding:20px 18px 22px; display:flex; align-items:center; gap:14px; }
+  .detail-thumb{ width:64px; height:64px; border-radius:15px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:28px; flex:none; overflow:hidden; cursor:pointer; box-shadow:0 2px 8px rgba(40,64,47,0.14); }
+  .detail-thumb img{ width:100%; height:100%; object-fit:cover; }
+  .detail-title{ font-size:20px; font-weight:600; color:var(--green-deep); }
+  .detail-type{ font-size:12px; color:var(--green); margin-top:3px; font-weight:600; }
+  .detail-body{ padding:18px; }
+  .detail-block{ margin-bottom:18px; }
+  .detail-block-label{ font-size:11px; font-weight:700; color:var(--text-dim); letter-spacing:0.2px; margin-bottom:6px; }
+  .detail-block-content{ font-size:14.5px; line-height:1.55; color:var(--text); }
+  .detail-block.primary .detail-block-content{ font-size:15.5px; font-weight:500; }
+  .detail-block.warn .detail-block-content{ color:var(--amber); }
+  .detail-actions{ display:flex; gap:10px; padding:0 18px 18px; }
+  .photo-full{ position:fixed; inset:0; background:#000; z-index:40; display:flex; align-items:center; justify-content:center; }
+  .photo-full img{ max-width:100%; max-height:100%; }
+  .photo-attach-btn{ display:flex; align-items:center; gap:10px; background:var(--bg-elevated); border:1px dashed var(--line); border-radius:13px; padding:12px; cursor:pointer; color:var(--green-deep); font-size:13.5px; font-weight:600; }
+  .photo-attach-btn .pa-icon{ font-size:20px; }
+  .photo-preview-box{ display:flex; align-items:center; gap:12px; background:var(--bg-elevated); border-radius:13px; padding:10px; margin-bottom:14px; }
+  .photo-preview-box img{ width:56px; height:56px; border-radius:10px; object-fit:cover; flex:none; }
+  .photo-preview-actions{ display:flex; gap:8px; flex:1; }
+  .photo-preview-actions button{ flex:1; border:none; border-radius:9px; padding:8px; font-size:12px; font-weight:700; cursor:pointer; }
+  .pp-change{ background:var(--green-pale); color:var(--green-deep); }
+  .pp-remove{ background:var(--coral-pale); color:var(--coral); }
+  .ai-analyzing{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--green-deep); font-weight:600; padding:4px 2px 14px; }
+  .ai-spinner{ width:14px; height:14px; border-radius:50%; border:2px solid var(--green-pale); border-top-color:var(--green-deep); animation:spin 0.7s linear infinite; flex:none; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .attach-menu-options{ display:flex; gap:10px; justify-content:space-around; margin-top:6px; }
+  .attach-menu-opt{ display:flex; flex-direction:column; align-items:center; gap:8px; background:none; border:none; cursor:pointer; flex:1; padding:10px 4px; }
+  .attach-menu-opt .ao-icon{ width:54px; height:54px; border-radius:50%; background:var(--bg-elevated); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:22px; }
+  .attach-menu-opt span{ font-size:12px; color:var(--text); font-weight:600; }
+  #statusBanner{ position:fixed; top:0; left:0; right:0; z-index:60; max-width:520px; margin:0 auto; padding:13px 16px; font-size:13px; font-weight:600; line-height:1.45; display:none; align-items:flex-start; gap:10px; box-shadow:0 2px 12px rgba(0,0,0,0.18); }
+  #statusBanner.show{ display:flex; }
+  #statusBanner.error{ background:var(--coral); color:#fff; }
+  #statusBanner.info{ background:var(--green-deep); color:#fff; }
+  #statusBanner .closeBtn{ margin-left:auto; flex:none; background:none; border:none; color:#fff; font-size:15px; cursor:pointer; opacity:0.85; }
+  .photo-full-close{ position:absolute; top:18px; right:18px; width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,0.15); border:none; color:#fff; font-size:16px; cursor:pointer; }
+  #undoToast{ position:fixed; left:14px; right:14px; bottom:96px; max-width:492px; margin:0 auto; z-index:55; background:var(--text); color:#fff; border-radius:13px; padding:12px 14px; display:none; align-items:center; justify-content:space-between; gap:10px; font-size:13px; box-shadow:0 6px 20px rgba(0,0,0,0.25); }
+  #undoToast.show{ display:flex; }
+  #undoToast button{ background:var(--amber); color:#fff; border:none; border-radius:9px; padding:8px 14px; font-weight:700; font-size:12.5px; cursor:pointer; flex:none; }
+
+  /* ---- AI Chat ---- */
+  .chat-overlay{ position:fixed; inset:0; background:#fff; z-index:45; display:flex; flex-direction:column; }
+  .chat-header{ display:flex; align-items:center; gap:10px; padding:14px; border-bottom:1px solid var(--line); flex:none; }
+  .chat-header h2{ font-size:16px; font-weight:700; color:var(--green-deep); flex:1; margin:0; }
+  .chat-close-btn{ width:34px; height:34px; border-radius:9px; border:1px solid var(--line); background:var(--bg-elevated); color:var(--green-deep); font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex:none; }
+  .chat-messages{ flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; }
+  .chat-empty{ color:var(--text-dim); font-size:13px; text-align:center; margin-top:40px; padding:0 20px; line-height:1.6; }
+  .chat-bubble{ max-width:84%; padding:10px 13px; border-radius:15px; font-size:13.5px; line-height:1.45; white-space:pre-wrap; }
+  .chat-bubble.user{ align-self:flex-end; background:var(--green-deep); color:#fff; border-bottom-right-radius:4px; }
+  .chat-bubble.ai{ align-self:flex-start; background:var(--bg-elevated); border:1px solid var(--line); color:var(--text); border-bottom-left-radius:4px; }
+  .chat-bubble.thinking{ color:var(--text-dim); font-style:italic; }
+  .chat-bubble strong{ color:var(--amber); }
+  .chat-action-card{ align-self:flex-start; max-width:90%; background:var(--amber-pale); border:1px solid #E0C9A8; border-radius:14px; padding:11px 13px; margin-top:-2px; }
+  .chat-action-title{ font-size:11px; font-weight:700; color:var(--amber); text-transform:uppercase; letter-spacing:0.3px; margin-bottom:5px; }
+  .chat-action-card ul{ margin:0; padding-left:18px; font-size:12.5px; }
+  .chat-action-card li{ margin-bottom:3px; }
+  .chat-action-buttons{ display:flex; gap:8px; margin-top:9px; }
+  .chat-action-buttons button{ flex:1; padding:9px; border-radius:9px; font-weight:700; font-size:12.5px; cursor:pointer; border:none; }
+  .chat-action-confirm{ background:var(--green-deep); color:#fff; }
+  .chat-action-cancel{ background:#fff; border:1px solid var(--line); color:var(--text); }
+  .chat-input-row{ display:flex; gap:8px; align-items:center; padding:11px 14px; border-top:1px solid var(--line); flex:none; }
+  .grid-list{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .grid-card{ background:var(--bg-card); border:1px solid var(--line); border-radius:16px; padding:13px 10px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:8px; cursor:pointer; position:relative; box-shadow:0 2px 4px rgba(43,43,36,0.07), 0 4px 12px rgba(43,43,36,0.08); }
+  .grid-card .med-thumb{ width:60px; height:60px; font-size:26px; }
+  .gc-name{ font-size:13px; font-weight:600; color:var(--text); line-height:1.3; }
+  .gc-sub{ font-size:10.5px; color:var(--text-dim); line-height:1.3; }
+  .gc-badge{ position:absolute; top:8px; right:8px; font-size:9px; font-weight:700; padding:3px 8px; border-radius:20px; white-space:nowrap; }
+  .sort-toggle{ display:flex; gap:3px; background:var(--bg-elevated); border-radius:11px; padding:3px; margin:2px 0 8px; }
+  .sort-toggle button{ flex:1; border:none; background:transparent; padding:9px 2px; font-size:11px; font-weight:700; color:var(--text-dim); border-radius:9px; cursor:pointer; }
+  .sort-toggle button.active{ background:var(--green-deep); color:#fff; }
+  .detail-field{ margin-bottom:16px; }
+  .detail-field-label{ font-size:12.5px; color:var(--text-dim); font-weight:600; margin-bottom:7px; }
+  .detail-field-value{ background:var(--bg-elevated); border-radius:12px; padding:13px 14px; font-size:14.5px; color:var(--text); line-height:1.5; }
+  .detail-field-value.warn{ color:var(--amber); font-weight:600; }
+  .detail-field-value.muted{ color:var(--text-dim); }
+
+  /* ---- Photo crop ---- */
+  .crop-overlay{ position:fixed; inset:0; background:#000; z-index:50; display:flex; flex-direction:column; }
+  .crop-header{ padding:16px; color:#fff; font-size:13.5px; font-weight:600; text-align:center; }
+  .crop-stage{ flex:1; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; touch-action:none; }
+  .crop-img-wrap{ position:relative; }
+  .crop-box{ position:absolute; border:2px solid #fff; box-shadow:0 0 0 9999px rgba(0,0,0,0.6); touch-action:none; cursor:move; }
+  .crop-handle{ position:absolute; right:-12px; bottom:-12px; width:28px; height:28px; background:#fff; border-radius:50%; border:3px solid var(--green-deep); touch-action:none; }
+  .crop-actions{ display:flex; gap:10px; padding:14px 16px calc(14px + env(safe-area-inset-bottom)); }
+  .crop-actions button{ flex:1; padding:13px; border-radius:13px; border:none; font-weight:700; font-size:13.5px; cursor:pointer; }
+  .crop-skip{ background:rgba(255,255,255,0.16); color:#fff; }
+  .crop-confirm{ background:var(--green-deep); color:#fff; }
+</style>
+</head>
+<body>
+<div id="statusBanner"></div>
+<div id="undoToast"></div>
+<div id="app"></div>
+
+<script>
+/* ---------- MOCK STATE (test podaci - biće zamenjeni pravim unosom) ---------- */
+let items = [];
+let settings = { expiryThresholdDays: 60, viewMode: 'lista', sortMode: 'naziv' };
+let searchOpen = false;
+let searchQuery = '';
+let openDetailId = null;
+
+function todayISO(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function daysUntil(iso){
+  if(!iso) return null;
+  const today = new Date(todayISO());
+  let target;
+  if(iso.length===7){ const [y,m] = iso.split('-').map(Number); target = new Date(y, m, 0); } // poslednji dan tog meseca
+  else { target = new Date(iso); }
+  return Math.round((target - today) / 86400000);
+}
+function dmyFromISO(iso){
+  if(!iso) return null;
+  if(iso.length===7){ const [y,m]=iso.split('-'); return m+'.'+y+'.'; }
+  const [y,m,d]=iso.split('-'); return d+'.'+m+'.'+y+'.';
+}
+function foldDiacritics(s){
+  if(!s) return '';
+  return s.toLowerCase().replace(/[čć]/g,'c').replace(/š/g,'s').replace(/ž/g,'z').replace(/đ/g,'dj');
+}
+function stemWord(w){
+  return (w.length>3 && /[aeiou]$/.test(w)) ? w.slice(0,-1) : w;
+}
+function normalizeSearchWord(w){ return stemWord(foldDiacritics(w)); }
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function uid(p){ return p+Date.now()+Math.random().toString(36).slice(2,6); }
+
+/* ---------- PERSISTENCE (localStorage) ---------- */
+function lsGet(key){ try{ const v=localStorage.getItem(key); return v===null?null:{value:v}; }catch(e){ return null; } }
+function lsSet(key,val){ try{ localStorage.setItem(key,val); }catch(e){} }
+function persistItems(){ lsSet('apoteka:items', JSON.stringify(items)); }
+function loadItems(){
+  const saved = lsGet('apoteka:items');
+  if(saved && saved.value){ try{ items = JSON.parse(saved.value); }catch(e){} }
+  else { persistItems(); }
+}
+function persistSettings(){ lsSet('apoteka:settings', JSON.stringify(settings)); }
+function loadSettings(){
+  const saved = lsGet('apoteka:settings');
+  if(saved && saved.value){ try{ settings = Object.assign(settings, JSON.parse(saved.value)); }catch(e){} }
+}
+function getApiKey(){ const k=lsGet('apoteka:apiKey'); return (k && k.value) ? k.value : ''; }
+function setApiKey(v){ lsSet('apoteka:apiKey', v); }
+
+/* ---------- STATUS BANNER ---------- */
+let bannerTimeout=null;
+function showBanner(msg, type){
+  type = type||'error';
+  const b = document.getElementById('statusBanner');
+  b.className = 'show '+type;
+  b.innerHTML = '<span>'+escapeHtml(msg)+'</span><button class="closeBtn" onclick="hideBanner()">✕</button>';
+  clearTimeout(bannerTimeout);
+  bannerTimeout = setTimeout(hideBanner, 9000);
+}
+function hideBanner(){
+  const b = document.getElementById('statusBanner');
+  if(b) b.className='';
+  clearTimeout(bannerTimeout);
+}
+
+/* ---------- UNDO (poništi brisanje) ---------- */
+let lastDeletedItem = null;
+let undoTimeout = null;
+function showUndoToast(message){
+  const t = document.getElementById('undoToast');
+  if(!t) return;
+  t.className = 'show';
+  t.innerHTML = '<span>'+escapeHtml(message)+'</span><button onclick="performUndo()">Poništi</button>';
+  clearTimeout(undoTimeout);
+  undoTimeout = setTimeout(hideUndoToast, 6000);
+}
+function hideUndoToast(){
+  const t = document.getElementById('undoToast');
+  if(t) t.className = '';
+  clearTimeout(undoTimeout);
+  lastDeletedItem = null;
+}
+function performUndo(){
+  if(!lastDeletedItem) return;
+  items.push(lastDeletedItem);
+  persistItems();
+  lastDeletedItem = null;
+  const t = document.getElementById('undoToast');
+  if(t) t.className = '';
+  clearTimeout(undoTimeout);
+  render();
+}
+
+/* ---------- OVERLAY STACK (da dugme/gest "nazad" zatvara prozorčić umesto da napusti stranicu) ---------- */
+let overlayStack = [];
+let suppressNextPopstate = false;
+function pushOverlay(removeFn){
+  overlayStack.push(removeFn);
+  try{ history.pushState({ovl:true}, '', location.href); }catch(e){}
+}
+function closeOverlay(removeFn){
+  const idx = overlayStack.lastIndexOf(removeFn);
+  if(idx!==-1) overlayStack.splice(idx,1);
+  removeFn();
+  suppressNextPopstate = true;
+  try{ history.back(); }catch(e){}
+}
+function swapOverlay(oldRemoveFn, newRemoveFn){
+  // zamenjuje jedan otvoren prozorcic drugim na ISTOM nivou, bez diranja istorije uopste -
+  // ponovo koristi vec postojeci korak istorije koji je otvorio prethodni prozorcic
+  const idx = overlayStack.lastIndexOf(oldRemoveFn);
+  if(idx!==-1) overlayStack.splice(idx,1);
+  oldRemoveFn();
+  overlayStack.push(newRemoveFn);
+}
+window.addEventListener('popstate', function(){
+  if(suppressNextPopstate){ suppressNextPopstate = false; return; }
+  const fn = overlayStack.pop();
+  if(fn) fn();
+});
+
+function expiryStatus(item){
+  if(!item.rok) return { key:'missing', label:'Rok nepoznat' };
+  const d = daysUntil(item.rok);
+  if(d < 0) return { key:'expired', label:'Isteklo' };
+  if(d <= settings.expiryThresholdDays) return { key:'soon', label:'Ističe za '+d+' d.' };
+  return { key:'ok', label:dmyFromISO(item.rok) };
+}
+
+function getItem(id){ return items.find(i=>i.id===id); }
+function sortItems(arr){
+  const copy = arr.slice();
+  if(settings.sortMode==='kategorija'){
+    copy.sort((a,b)=>{
+      const ka = a.kategorija||'\uffff', kb = b.kategorija||'\uffff';
+      const c = ka.localeCompare(kb,'sr');
+      return c!==0 ? c : a.naziv.localeCompare(b.naziv,'sr');
+    });
+  } else if(settings.sortMode==='tip'){
+    copy.sort((a,b)=>{
+      const ta = a.tip||'\uffff', tb = b.tip||'\uffff';
+      const c = ta.localeCompare(tb,'sr');
+      return c!==0 ? c : a.naziv.localeCompare(b.naziv,'sr');
+    });
+  } else if(settings.sortMode==='rok'){
+    copy.sort((a,b)=>{
+      const ra = a.rok || '9999-99', rb = b.rok || '9999-99';
+      return ra.localeCompare(rb);
+    });
+  } else {
+    copy.sort((a,b)=> a.naziv.localeCompare(b.naziv,'sr'));
+  }
+  return copy;
+}
+function setSortMode(mode){
+  settings.sortMode = mode;
+  persistSettings();
+  render();
+}
+
+/* ---------- RENDER ---------- */
+function render(){
+  const app = document.getElementById('app');
+  const qWords = searchQuery.trim().split(/\s+/).filter(Boolean).map(normalizeSearchWord);
+  const filtered = sortItems(qWords.length ? items.filter(it=>{
+    const haystack = foldDiacritics([it.naziv, it.tip, it.kategorija, it.napomena, it.doziranje].filter(Boolean).join(' '));
+    return qWords.every(w => haystack.includes(w));
+  }) : items);
+
+  const expiring = items.filter(it=>{
+    const s = expiryStatus(it);
+    return s.key==='soon' || s.key==='expired';
+  }).sort((a,b)=>{
+    const da = a.rok ? new Date(a.rok) : 0, db = b.rok ? new Date(b.rok) : 0;
+    return da - db;
+  });
+  const expiredCount = expiring.filter(it=> expiryStatus(it).key==='expired').length;
+  const soonCount = expiring.length - expiredCount;
+  const expiryTitleParts = [];
+  if(soonCount>0) expiryTitleParts.push('Ističe uskoro ('+soonCount+')');
+  if(expiredCount>0) expiryTitleParts.push('Isteklo ('+expiredCount+')');
+
+  const expiryHtml = (!searchOpen && expiring.length>0) ? (
+    '<div class="expiry-strip">'+
+    '<div class="expiry-strip-title">⏳ '+expiryTitleParts.join(' · ')+'</div>'+
+    '<div class="expiry-chip-row">'+
+    expiring.map(it=>{
+      const s = expiryStatus(it);
+      return '<div class="expiry-chip '+(s.key==='expired'?'expired':'')+'" onclick="openDetail(\''+it.id+'\')">'+
+        '<span class="en">'+escapeHtml(it.naziv)+'</span><span class="ed">'+s.label+'</span></div>';
+    }).join('')+
+    '</div></div>'
+  ) : '';
+
+  let listHtml;
+  if(filtered.length===0){
+    listHtml = '<div class="empty">'+(qWords.length ? 'Nema stavki koje odgovaraju pretrazi "'+escapeHtml(searchQuery)+'".' : 'Kućna apoteka je prazna.<br>Dodaj prvi lek ili suplement dugmetom ispod.')+'</div>';
+  } else if(settings.viewMode==='mreza'){
+    listHtml = '<div class="section-label">Sve stavke ('+filtered.length+')</div>'+
+      '<div class="grid-list">'+
+      filtered.map(it=>{
+        const s = expiryStatus(it);
+        const badgeClass = s.key==='ok' ? 'badge-ok' : s.key==='soon' ? 'badge-soon' : s.key==='expired' ? 'badge-expired' : 'badge-missing';
+        return '<div class="grid-card" onclick="openDetail(\''+it.id+'\')">'+
+          '<div class="med-thumb">'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
+          '<div class="gc-name">'+escapeHtml(it.naziv)+'</div>'+
+          '<div class="gc-sub">'+[it.tip, it.kategorija].filter(Boolean).map(escapeHtml).join(' · ')+'</div>'+
+          '<div class="med-badge gc-badge '+badgeClass+'">'+s.label+'</div>'+
+          '</div>';
+      }).join('')+
+      '</div>';
+  } else {
+    listHtml = '<div class="section-label">Sve stavke ('+filtered.length+')</div>' +
+      filtered.map(it=>{
+        const s = expiryStatus(it);
+        const badgeClass = s.key==='ok' ? 'badge-ok' : s.key==='soon' ? 'badge-soon' : s.key==='expired' ? 'badge-expired' : 'badge-missing';
+        return '<div class="med-card" onclick="openDetail(\''+it.id+'\')">'+
+          '<div class="med-thumb">'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
+          '<div class="med-info"><div class="med-name">'+escapeHtml(it.naziv)+'</div>'+
+          '<div class="med-sub">'+[it.tip, it.kategorija].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div>'+
+          '<div class="med-badge '+badgeClass+'">'+s.label+'</div>'+
+          '</div>';
+      }).join('');
+  }
+
+  app.innerHTML =
+    '<div class="topbar">'+
+    '<div class="topbar-row">'+
+    '<div class="app-title serif">Kućna apoteka</div>'+
+    '<button class="icon-btn" onclick="toggleViewMode()" title="Promeni prikaz">'+(settings.viewMode==='mreza'?'☰':'▦')+'</button>'+
+    '<button class="icon-btn" onclick="toggleSearch()">'+(searchOpen?'✕':'🔍')+'</button>'+
+    '<button class="icon-btn" onclick="openSettings()">⚙</button>'+
+    '</div>'+
+    (searchOpen ? '<div class="search-wrap"><span class="sicon">🔍</span><input id="searchInput" type="text" placeholder="Pretraži naziv, kategoriju, napomenu..." value="'+escapeHtml(searchQuery)+'" oninput="setSearch(this.value)" autofocus></div>' : '')+
+    (items.length>0 ? ('<div class="sort-toggle"><button class="'+(settings.sortMode==='naziv'?'active':'')+'" onclick="setSortMode(\'naziv\')">Naziv</button>'+
+    '<button class="'+(settings.sortMode==='kategorija'?'active':'')+'" onclick="setSortMode(\'kategorija\')">Kategorija</button>'+
+    '<button class="'+(settings.sortMode==='tip'?'active':'')+'" onclick="setSortMode(\'tip\')">Tip</button>'+
+    '<button class="'+(settings.sortMode==='rok'?'active':'')+'" onclick="setSortMode(\'rok\')">Rok</button></div>') : '')+
+    expiryHtml+
+    '</div>'+
+    '<div class="list-area">'+listHtml+'</div>'+
+    '<div class="bottom-bar"><div class="entry-row">'+
+    '<button class="plus-btn chat-btn" onclick="openChatMode()" title="AI ćaskanje">&#128172;</button>'+
+    '<button class="plus-btn" onclick="quickAttachPhoto()" title="Dodaj fotografiju">+</button>'+
+    '<div class="entry-input-wrap">'+
+    '<input type="text" id="quickInput" placeholder="Ukucaj naziv leka ili koristi mikrofon na tastaturi..." onkeydown="if(event.key===\'Enter\') submitQuickText()">'+
+    '</div><button class="send-btn" onmousedown="event.preventDefault()" onclick="submitQuickText()">➤</button>'+
+    '</div></div>';
+
+  if(searchOpen){
+    setTimeout(()=>{ const el=document.getElementById('searchInput'); if(el) el.focus(); }, 30);
+  }
+}
+let searchCloseFn = null;
+function toggleViewMode(){
+  settings.viewMode = settings.viewMode==='mreza' ? 'lista' : 'mreza';
+  persistSettings();
+  render();
+}
+function toggleSearch(){
+  if(searchOpen){
+    if(searchCloseFn){ closeOverlay(searchCloseFn); searchCloseFn=null; }
+  } else {
+    searchOpen = true;
+    render();
+    searchCloseFn = ()=>{ searchOpen=false; searchQuery=''; render(); searchCloseFn=null; };
+    pushOverlay(searchCloseFn);
+    setTimeout(()=>{ const el=document.getElementById('searchInput'); if(el) el.focus(); }, 30);
+  }
+}
+function setSearch(v){
+  searchQuery=v;
+  const cursorPos = v.length;
+  render();
+  const el=document.getElementById('searchInput');
+  if(el){ el.focus(); try{ el.setSelectionRange(cursorPos, cursorPos); }catch(e){} }
+}
+
+/* ---------- DETAIL ---------- */
+let detailCloseFn = null;
+function openDetail(id, swapFromFn){
+  openDetailId = id;
+  renderDetail();
+  if(!detailCloseFn){
+    detailCloseFn = ()=>{
+      openDetailId = null;
+      const b = document.getElementById('detailBackdrop');
+      if(b) b.remove();
+      if(!document.getElementById('formBackdrop')) document.body.style.overflow='';
+      detailCloseFn = null;
+    };
+    if(swapFromFn){ swapOverlay(swapFromFn, detailCloseFn); }
+    else { pushOverlay(detailCloseFn); }
+  }
+}
+function closeDetail(){
+  if(detailCloseFn){ closeOverlay(detailCloseFn); detailCloseFn = null; }
+}
+function renderDetail(){
+  const it = getItem(openDetailId);
+  if(!it) return;
+  let b = document.getElementById('detailBackdrop');
+  if(!b){ b = document.createElement('div'); b.id='detailBackdrop'; b.className='modal-backdrop top'; document.body.appendChild(b); }
+  const s = expiryStatus(it);
+  const rokColor = s.key==='expired' ? 'var(--coral)' : s.key==='soon' ? 'var(--amber)' : s.key==='missing' ? 'var(--text-dim)' : 'var(--text)';
+
+  b.innerHTML = '<div class="modal full">'+
+    '<button class="modal-close-x" onclick="closeDetail()">✕</button>'+
+    '<div class="detail-hero">'+
+    '<div class="detail-thumb" onclick="'+(it.slika?'openPhotoFullScreen()':'')+'">'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
+    '<div><div class="detail-title serif">'+escapeHtml(it.naziv)+'</div>'+
+    '<div class="detail-type">'+escapeHtml(it.tip||'')+'</div></div>'+
+    '</div>'+
+    '<div class="detail-body">'+
+    '<div class="detail-field"><div class="detail-field-label">NAČIN UPOTREBE</div><div class="detail-field-value'+(it.doziranje?'':' muted')+'">'+(it.doziranje ? escapeHtml(it.doziranje) : 'Nije uneto')+'</div></div>'+
+    (it.kategorija ? '<div class="detail-field"><div class="detail-field-label">ZA ŠTA SE KORISTI</div><div class="detail-field-value">'+escapeHtml(it.kategorija)+'</div></div>' : '')+
+    (it.napomena ? '<div class="detail-field"><div class="detail-field-label">NAPOMENA / UPOZORENJE</div><div class="detail-field-value warn">'+escapeHtml(it.napomena)+'</div></div>' : '')+
+    (it.prosireno ? '<button class="cancel-btn" style="width:100%; padding:12px; border-radius:12px; font-weight:700; font-size:13.5px; margin-bottom:16px; cursor:pointer;" onclick="openExpandedInfo(\''+it.id+'\')">📋 Više detalja</button>' : '')+
+    '<div class="detail-field"><div class="detail-field-label">ROK TRAJANJA</div><div class="detail-field-value" style="color:'+rokColor+'; font-weight:600;">'+(it.rok ? dmyFromISO(it.rok)+(s.key==='soon'||s.key==='expired' ? ' — '+s.label : '') : '⚠ Rok trajanja nije unet')+'</div></div>'+
+    '<div class="detail-field">'+
+    '<div class="detail-field-label">INFORMACIJE SA INTERNETA</div>'+
+    (internetSearchLoadingId===it.id ?
+      '<div class="ai-analyzing"><span class="ai-spinner"></span> Pretražujem internet...</div>' :
+      (it.internetInfo ?
+        ('<div class="detail-field-value">'+escapeHtml(it.internetInfo.tekst)+'</div>'+
+         (it.internetInfo.izvorUrl ? '<div style="margin-top:7px;font-size:12px;"><a href="'+escapeHtml(it.internetInfo.izvorUrl)+'" target="_blank" rel="noopener" style="color:var(--green-deep); font-weight:600;">Izvor'+(it.internetInfo.izvorNaziv?(': '+escapeHtml(it.internetInfo.izvorNaziv)):'')+' ↗</a></div>' : '')+
+         '<div class="field-hint" style="margin-top:8px;">Preuzeto sa interneta — ne zamenjuje savet farmaceuta ili lekara.</div>'+
+         '<button class="cancel-btn" style="margin-top:10px; width:auto; padding:9px 14px; border-radius:10px; font-size:12.5px; font-weight:700;" onclick="fetchInternetInfo(\''+it.id+'\')">Pretraži ponovo</button>')
+        :
+        ('<button class="save-btn" style="width:auto; padding:11px 16px; border-radius:12px; font-size:13.5px;" onclick="fetchInternetInfo(\''+it.id+'\')">🔍 Pretraži uputstvo na internetu</button>')
+      )
+    )+
+    '</div>'+
+    '</div>'+
+    '<div class="detail-actions">'+
+    '<button class="cancel-btn" style="flex:1;padding:13px;border-radius:13px;border:none;font-weight:700;cursor:pointer;" onclick="openEditForm(\''+it.id+'\')">Izmeni</button>'+
+    '<button class="delete-btn" style="flex:1;padding:13px;border-radius:13px;border:none;font-weight:700;cursor:pointer;" onclick="confirmDeleteItem(\''+it.id+'\')">Obriši</button>'+
+    '</div>'+
+    '</div>';
+  document.body.style.overflow='hidden';
+}
+let photoFullCloseFn = null;
+function openPhotoFullScreen(){
+  const it = getItem(openDetailId);
+  if(!it || !it.slika) return;
+  const p = document.createElement('div'); p.className='photo-full'; p.id='photoFullEl';
+  p.innerHTML = '<button class="photo-full-close" onclick="closePhotoFullScreen()">✕</button><img src="'+it.slika+'">';
+  document.body.appendChild(p);
+  photoFullCloseFn = ()=>{ const pp=document.getElementById('photoFullEl'); if(pp) pp.remove(); photoFullCloseFn=null; };
+  pushOverlay(photoFullCloseFn);
+}
+function closePhotoFullScreen(){
+  if(photoFullCloseFn){ closeOverlay(photoFullCloseFn); photoFullCloseFn = null; }
+}
+let expandedInfoCloseFn = null;
+function openExpandedInfo(id){
+  const it = getItem(id);
+  if(!it || !it.prosireno) return;
+  const b = document.createElement('div'); b.className='modal-backdrop top'; b.id='expandedInfoBackdrop';
+  b.innerHTML = '<div class="modal full">'+
+    '<button class="modal-close-x" onclick="closeExpandedInfo()">✕</button>'+
+    '<div class="detail-hero">'+
+    '<div class="detail-thumb">'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
+    '<div><div class="detail-title serif">'+escapeHtml(it.naziv)+'</div>'+
+    '<div class="detail-type">Prošireno uputstvo</div></div>'+
+    '</div>'+
+    '<div class="detail-body">'+
+    '<div class="detail-field-value" style="line-height:1.65;">'+escapeChatText(it.prosireno)+'</div>'+
+    '<div class="field-hint" style="margin-top:10px;">Preuzeto sa skeniranog uputstva — ne zamenjuje savet farmaceuta ili lekara.</div>'+
+    '</div></div>';
+  document.body.appendChild(b);
+  expandedInfoCloseFn = ()=>{ const bb=document.getElementById('expandedInfoBackdrop'); if(bb) bb.remove(); expandedInfoCloseFn=null; };
+  pushOverlay(expandedInfoCloseFn);
+}
+function closeExpandedInfo(){
+  if(expandedInfoCloseFn){ closeOverlay(expandedInfoCloseFn); expandedInfoCloseFn = null; }
+}
+function confirmDeleteItem(id){
+  showConfirm('Obrisati ovu stavku iz kućne apoteke?', ()=>{
+    const it = getItem(id);
+    if(it) lastDeletedItem = JSON.parse(JSON.stringify(it));
+    items = items.filter(i=>i.id!==id);
+    persistItems();
+    closeDetail();
+    render();
+    if(it) showUndoToast('Stavka "'+it.naziv+'" obrisana.');
+  });
+}
+
+/* ---------- ADD / EDIT FORM (draft-based, da ne izgubi unos pri osvezavanju zbog fotografije) ---------- */
+const KNOWN_TYPES = ['Lek na recept','Lek bez recepta','Suplement','Vitamin','Krema','Probiotik','Protein'];
+const GEMINI_MODEL = 'gemini-3.5-flash-lite';
+const GEMINI_MODEL_SEARCH = 'gemini-3.5-flash';
+let internetSearchLoadingId = null;
+let formDraft = null;
+let formEditId = null;
+let formAnalyzing = false;
+let formAiWarnings = [];
+let formCloseFn = null;
+let leafletQueue = [];
+
+function knownCategories(){
+  const seen = new Set(); const out = [];
+  items.forEach(it=>{ if(it.kategorija && !seen.has(it.kategorija)){ seen.add(it.kategorija); out.push(it.kategorija); } });
+  return out;
+}
+function openEditForm(id){
+  const oldFn = detailCloseFn;
+  detailCloseFn = null;
+  openDetailId = null;
+  openItemForm(id, oldFn);
+}
+function quickAttachPhoto(){
+  openItemForm(null);
+  openFormAttachMenu('main');
+}
+/* ---------- AI CHAT ---------- */
+let chatMessages = [];
+let chatCloseFn = null;
+function openChatMode(){
+  chatMessages = [];
+  renderChatOverlay();
+  chatCloseFn = ()=>{ const el=document.getElementById('chatOverlayRoot'); if(el) el.remove(); chatCloseFn=null; };
+  pushOverlay(chatCloseFn);
+}
+function closeChatMode(){
+  if(chatCloseFn){ closeOverlay(chatCloseFn); chatCloseFn = null; }
+}
+function escapeChatText(text){
+  const escaped = escapeHtml(text);
+  const lines = escaped.split('\n');
+  let html = ''; let inList = false;
+  lines.forEach(line=>{
+    const trimmed = line.trim();
+    if(/^-\s+/.test(trimmed)){
+      if(!inList){ html += '<ul class="chat-ul" style="margin:2px 0 8px; padding-left:18px;">'; inList = true; }
+      html += '<li style="margin-bottom:3px;">'+trimmed.replace(/^-\s+/,'')+'</li>';
+    } else {
+      if(inList){ html += '</ul>'; inList = false; }
+      if(trimmed==='') { /* prazan red */ }
+      else html += '<p style="margin:0 0 6px;">'+trimmed+'</p>';
+    }
+  });
+  if(inList) html += '</ul>';
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  return html || escaped;
+}
+function parseChatAction(raw){
+  const marker = /###AKCIJA###([\s\S]*?)###KRAJ###/;
+  const match = marker.exec(raw);
+  if(!match) return { cleanText: raw.trim(), actions: null };
+  const cleanText = raw.slice(0, match.index).trim();
+  let actions = null;
+  try{ actions = JSON.parse(match[1].trim()); if(!Array.isArray(actions)) actions=null; }catch(e){ actions=null; }
+  return { cleanText: cleanText || raw.trim(), actions };
+}
+function describeChatAction(act){
+  if(act.tip==='dodaj'){
+    const f = act.polja||{};
+    return 'Dodavanje: "'+(f.naziv||'')+'"'+(f.kategorija?(' · '+f.kategorija):'')+(f.rok?(' · rok '+dmyFromISO(f.rok)):'');
+  }
+  const it = getItem(act.stavka_id);
+  const itemDesc = it ? it.naziv : (act.stavka_id||'?');
+  if(act.tip==='obrisi') return 'Brisanje: "'+itemDesc+'"';
+  if(act.tip==='izmeni'){
+    const changes = Object.keys(act.polja||{}).map(k=> k+': '+act.polja[k]).join(', ');
+    return 'Izmena: "'+itemDesc+'" → '+changes;
+  }
+  return '';
+}
+function applyChatActions(msgIdx){
+  const msg = chatMessages[msgIdx];
+  if(!msg || !msg.actions) return;
+  msg.actions.forEach(act=>{
+    try{
+      if(act.tip==='izmeni'){
+        const it = getItem(act.stavka_id);
+        if(it) Object.assign(it, act.polja||{});
+      } else if(act.tip==='obrisi'){
+        items = items.filter(i=>i.id!==act.stavka_id);
+      } else if(act.tip==='dodaj'){
+        items.push(Object.assign({ id: uid('m'), tip:'', kategorija:'', doziranje:'', napomena:'', rok:'', slika:null, ikonica:'💊' }, act.polja||{}));
+      }
+    }catch(err){}
+  });
+  persistItems();
+  msg.actionStatus = 'applied';
+  chatMessages.push({role:'ai', text:'Gotovo — izmene su sačuvane.'});
+  renderChatOverlay();
+  render();
+}
+function cancelChatActions(msgIdx){
+  const msg = chatMessages[msgIdx];
+  if(!msg) return;
+  msg.actionStatus = 'cancelled';
+  chatMessages.push({role:'ai', text:'U redu, izmene nisu primenjene.'});
+  renderChatOverlay();
+}
+function renderChatOverlay(){
+  let root = document.getElementById('chatOverlayRoot');
+  if(!root){ root = document.createElement('div'); root.id='chatOverlayRoot'; document.body.appendChild(root); }
+  root.innerHTML = '<div class="chat-overlay">'+
+    '<div class="chat-header"><h2 class="serif">AI ćaskanje o apoteci</h2><button class="chat-close-btn" onclick="closeChatMode()">✕</button></div>'+
+    '<div class="chat-messages" id="chatMessagesEl">'+
+    (chatMessages.length===0 ? '<div class="chat-empty">Pitaj bilo šta o tvojoj kućnoj apoteci — npr. "Šta imam za glavobolju?", "Šta mi ističe uskoro?", "Koliko vitamina imam?"</div>' :
+      chatMessages.map((m,idx)=>
+        '<div class="chat-bubble '+m.role+(m.thinking?' thinking':'')+'">'+(m.role==='ai' && !m.thinking ? escapeChatText(m.text) : escapeHtml(m.text))+'</div>'+
+        (m.actions && m.actionStatus==='pending' ?
+          '<div class="chat-action-card"><div class="chat-action-title">AI predlaže</div>'+
+          '<ul>'+m.actions.map(act=>'<li>'+escapeHtml(describeChatAction(act))+'</li>').join('')+'</ul>'+
+          '<div class="chat-action-buttons">'+
+          '<button class="chat-action-confirm" onclick="applyChatActions('+idx+')">Potvrdi</button>'+
+          '<button class="chat-action-cancel" onclick="cancelChatActions('+idx+')">Odbaci</button>'+
+          '</div></div>'
+        : '')
+      ).join('')
+    )+
+    '</div>'+
+    '<div class="chat-input-row">'+
+    '<div class="entry-input-wrap"><input type="text" id="chatInputField" placeholder="Postavi pitanje..." onkeydown="if(event.key===\'Enter\') sendChatMessage()"></div>'+
+    '<button class="send-btn" onclick="sendChatMessage()">➤</button>'+
+    '</div></div>';
+  const msgsEl = document.getElementById('chatMessagesEl');
+  if(msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
+  const inp = document.getElementById('chatInputField');
+  if(inp) inp.focus();
+}
+async function sendChatMessage(){
+  const inp = document.getElementById('chatInputField');
+  const text = inp ? inp.value.trim() : '';
+  if(!text) return;
+  if(inp) inp.value = '';
+  const historyBefore = chatMessages.slice();
+  chatMessages.push({role:'user', text: text});
+  chatMessages.push({role:'ai', text:'Razmišljam...', thinking:true});
+  renderChatOverlay();
+  let answer;
+  try{
+    answer = await askAIAboutMedicines(text, historyBefore);
+  } catch(err){
+    chatMessages.pop();
+    chatMessages.push({role:'ai', text:(err && err.message) ? err.message : 'Greška pri komunikaciji sa AI servisom.'});
+    renderChatOverlay();
+    return;
+  }
+  chatMessages.pop();
+  const parsed = parseChatAction(answer);
+  chatMessages.push({role:'ai', text: parsed.cleanText, actions: parsed.actions, actionStatus: parsed.actions ? 'pending' : null});
+  renderChatOverlay();
+}
+async function askAIAboutMedicines(question, history){
+  const apiKey = getApiKey();
+  if(!apiKey) throw new Error('Nije unet Gemini API ključ. Idi u Podešavanja (⚙) i unesi ga.');
+  const dataSummary = JSON.stringify(items.map(it=>({
+    id: it.id, naziv: it.naziv, tip: it.tip, kategorija: it.kategorija,
+    doziranje: it.doziranje, napomena: it.napomena, rok: it.rok
+  })));
+  const sys = 'Ti si pomoćnik unutar aplikacije "Kućna apoteka" (spisak lekova, suplemenata, vitamina i sličnog u domaćinstvu). '+
+    'Evo svih trenutnih stavki u JSON formatu: '+dataSummary+'. '+
+    'Danas je: '+todayISO()+'. '+
+    'Odgovaraj na pitanja korisnika kratko i jasno na srpskom jeziku — pretraga, filtriranje po kategoriji/nazivu/roku, zbrajanje, poređenje. '+
+    'Ako podaci ne sadrže odgovor, iskreno reci da ne možeš da nađeš tu informaciju. NIKAD ne izmišljaj medicinske savete koji nisu u podacima — ako korisnik pita nešto medicinski osetljivo van onoga što piše u napomeni, predloži da proveri sa farmaceutom ili lekarom. '+
+    'FORMATIRANJE: piši prirodnim rečenicama; za spisak stavki koristi novi red sa "- " ispred svake; ključne brojeve/nazive podebljaj sa **dvostrukim zvezdicama**. '+
+    'IZMENE PODATAKA: možeš predložiti dodavanje/izmenu/brisanje stavke, ali NIKAD je sam ne primenjuješ — korisnik mora ručno da potvrdi. '+
+    'Kad predlažeš izmenu, na SAMOM KRAJU odgovora dodaj tačno ovaj blok, bez ičeg posle:\n'+
+    '###AKCIJA###\n[{"tip":"izmeni","stavka_id":"...","polja":{"kategorija":"nova vrednost"}}]\n###KRAJ###\n'+
+    'Pravila: "tip" je "izmeni", "obrisi" ili "dodaj". Za "izmeni": "stavka_id" (tačan id) + "polja" (samo polja koja se menjaju: naziv/tip/kategorija/doziranje/napomena/rok). Za "obrisi": samo "stavka_id". Za "dodaj": bez "stavka_id", "polja" ima bar "naziv". '+
+    'Ako ne predlažeš izmenu, NE dodaji ###AKCIJA### blok uopšte.';
+
+  const history_parts = (history||[]).filter(m=>!m.thinking).map(m=>({ role: m.role==='user'?'user':'model', parts:[{text:m.text}] }));
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(()=>controller.abort(), 25000);
+  let resp;
+  try{
+    resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL_SEARCH+':generateContent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-goog-api-key':apiKey },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: sys }] },
+        contents: [...history_parts, { role:'user', parts:[{ text: question }] }],
+        generationConfig: { maxOutputTokens: 1500, temperature: 0.2 }
+      }),
+      signal: controller.signal
+    });
+  } catch(fetchErr){
+    clearTimeout(timeoutId);
+    if(fetchErr.name==='AbortError') throw new Error('Server nije odgovorio na vreme. Probaj ponovo.');
+    throw new Error('Ne mogu da se povežem sa AI servisom: '+fetchErr.message);
+  }
+  clearTimeout(timeoutId);
+  if(!resp.ok){
+    const errBody = await resp.text().catch(()=> '');
+    if(resp.status===401) throw new Error('Google nije prihvatio ključ (401 - neautorizovan). Proveri da li si ključ tačno nalepio u Podešavanjima, ili napravi nov ključ na aistudio.google.com.');
+    throw new Error('Gemini API greška ('+resp.status+'): '+errBody.slice(0,180));
+  }
+  const data = await resp.json();
+  const candidate = data.candidates && data.candidates[0];
+  if(!candidate) throw new Error('Gemini nije vratio rezultat.');
+  const text = (candidate.content && candidate.content.parts && candidate.content.parts.map(p=>p.text||'').join(' ').trim()) || '';
+  if(!text) throw new Error('AI nije vratio odgovor.');
+  return text;
+}
+
+function submitQuickText(){
+  const inp = document.getElementById('quickInput');
+  const val = inp ? inp.value.trim() : '';
+  if(!val) return;
+  if(inp) inp.value = '';
+  openItemForm(null);
+  triggerAITextRead(val);
+}
+
+async function triggerAITextRead(rawText){
+  const apiKey = getApiKey();
+  if(!apiKey){
+    formDraft.naziv = rawText;
+    renderItemForm();
+    showBanner('Nije unet Gemini API ključ — tekst je upisan u polje Naziv bez AI raspoređivanja. Idi u Podešavanja (⚙) da to uključiš.');
+    return;
+  }
+  formAnalyzing = true;
+  renderItemForm();
+  try{
+    const result = await callGeminiForMedicineFromText(rawText);
+    const warnings = [];
+    formDraft.naziv = result.naziv || rawText;
+    if(result.tip) formDraft.tip = result.tip;
+    if(result.doziranje) formDraft.doziranje = result.doziranje;
+    if(result.kategorija) formDraft.kategorija = result.kategorija;
+    if(result.napomena) formDraft.napomena = result.napomena;
+    if(result.rok) formDraft.rok = result.rok;
+    formAiWarnings = warnings;
+  } catch(err){
+    formDraft.naziv = rawText;
+    showBanner(err && err.message ? err.message : 'Greška pri obradi teksta — upisano je u polje Naziv, dopuni ostalo ručno.');
+  }
+  formAnalyzing = false;
+  renderItemForm();
+}
+
+async function callGeminiForMedicineFromText(rawText){
+  const apiKey = getApiKey();
+  const sys = 'Korisnik je izgovorio ili ukucao rečenicu o leku/suplementu/vitaminu za kućnu apoteku (glasovni ili tekstualni unos). Tekst: "'+rawText+'". '+
+    'Razloži tu rečenicu na polja. Vrati ISKLJUČIVO JSON objekat, bez markdown, bez ostalog teksta, u formatu: '+
+    '{"naziv": naziv proizvoda ZAJEDNO SA jačinom/dozom ako je pomenuta (npr. "Brufen 400mg", "Flobijan 20mg") — jačina u miligramima ili slično UVEK ide uz naziv, nikad samostalno u polje doziranje, '+
+    '"tip": najbolja procena jedne od ["Lek na recept","Lek bez recepta","Suplement","Vitamin","Krema","Probiotik","Protein"] ako se pominje ili može zaključiti, inače prazan string, '+
+    '"doziranje": SAMO stvarno uputstvo za upotrebu — koliko puta dnevno, kada, kako (npr. "1 kapsula ujutru", "2x dnevno posle jela") — ako je to pomenuto u tekstu; NIKAD ovde ne stavljaj samu jačinu/dozu proizvoda (ta ide u naziv); ako uputstvo za upotrebu nije pomenuto, vrati prazan string, '+
+    '"kategorija": kratka procena za šta se koristi na srpskom (npr. "protiv bolova") ako je pomenuto ili se može zaključiti, inače prazan string, '+
+    '"napomena": bilo koje upozorenje ili dodatna napomena koja je pomenuta (npr. "na recept", "ne davati deci"), inače prazan string, '+
+    '"rok": ako je pomenut datum isteka roka, u formatu GGGG-MM (samo mesec i godina - lekovi obično imaju odštampan samo mesec/godinu isteka, ne tačan dan; ako je izuzetno pomenut i tačan dan, ipak vrati samo GGGG-MM), inače null}. '+
+    'VAŽNO: ne izmišljaj ništa što nije eksplicitno pomenuto u tekstu — ako nešto nije rečeno, vrati prazan string (ili null za rok).';
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(()=>controller.abort(), 20000);
+  let resp;
+  try{
+    resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL+':generateContent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-goog-api-key':apiKey },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: sys }] },
+        contents: [{ role:'user', parts: [{ text: rawText }] }],
+        generationConfig: { responseMimeType:'application/json', maxOutputTokens: 800 }
+      }),
+      signal: controller.signal
+    });
+  } catch(fetchErr){
+    clearTimeout(timeoutId);
+    if(fetchErr.name==='AbortError') throw new Error('Server nije odgovorio na vreme. Probaj ponovo.');
+    throw new Error('Ne mogu da se povežem sa AI servisom: '+fetchErr.message);
+  }
+  clearTimeout(timeoutId);
+  if(!resp.ok){
+    const errBody = await resp.text().catch(()=> '');
+    if(resp.status===401) throw new Error('Google nije prihvatio ključ (401 - neautorizovan). Proveri ga u Podešavanjima.');
+    throw new Error('Gemini API greška ('+resp.status+'): '+errBody.slice(0,180));
+  }
+  const data = await resp.json();
+  const candidate = data.candidates && data.candidates[0];
+  if(!candidate) throw new Error('Gemini nije vratio rezultat.');
+  const raw = (candidate.content && candidate.content.parts && candidate.content.parts[0] && candidate.content.parts[0].text) || '';
+  let result;
+  try{ result = JSON.parse(raw); }catch(e){ throw new Error('Ne mogu da protumačim AI odgovor.'); }
+  return {
+    naziv: (result.naziv||'').trim(),
+    tip: (result.tip||'').trim(),
+    doziranje: (result.doziranje||'').trim(),
+    kategorija: (result.kategorija||'').trim(),
+    napomena: (result.napomena||'').trim(),
+    rok: result.rok || null
+  };
+}
+function openItemForm(editId, swapFromFn){
+  formEditId = editId;
+  const it = editId ? getItem(editId) : null;
+  const DEFAULT_ITEM = { naziv:'', tip:'', kategorija:'', doziranje:'', napomena:'', rok:'', slika:null, ikonica:'💊', prosireno:'' };
+  formDraft = Object.assign({}, DEFAULT_ITEM, it||{});
+  formAnalyzing = false;
+  formAiWarnings = [];
+  leafletQueue = [];
+  renderItemForm();
+  if(!formCloseFn){
+    formCloseFn = ()=>{
+      const b = document.getElementById('formBackdrop');
+      if(b) b.remove();
+      formDraft = null; formEditId = null; leafletQueue = [];
+      if(!document.getElementById('detailBackdrop')) document.body.style.overflow='';
+      formCloseFn = null;
+    };
+    if(swapFromFn){ swapOverlay(swapFromFn, formCloseFn); }
+    else { pushOverlay(formCloseFn); }
+  }
+}
+function updateDraft(field, value){ formDraft[field] = value; }
+function renderItemForm(){
+  const cats = knownCategories();
+  let b = document.getElementById('formBackdrop');
+  const isNew = !b;
+  if(isNew){ b = document.createElement('div'); b.className='modal-backdrop'; b.id='formBackdrop'; }
+
+  const photoSectionHtml = formDraft.slika ?
+    ('<div class="photo-preview-box"><img src="'+formDraft.slika+'"><div class="photo-preview-actions">'+
+     '<button class="pp-change" onclick="openFormAttachMenu(\'main\')">Promeni</button>'+
+     '<button class="pp-remove" onclick="removeFormPhoto()">Ukloni</button>'+
+     '</div></div>') :
+    ('<div class="photo-attach-btn" onclick="openFormAttachMenu(\'main\')"><span class="pa-icon">📷</span> Dodaj fotografiju pakovanja</div>');
+
+  const leafletBtnHtml = '<div class="photo-attach-btn" style="margin-top:8px;" onclick="openFormAttachMenu(\'leaflet\')"><span class="pa-icon">📄</span> '+(leafletQueue.length>0?'Dodaj još jednu stranu uputstva':'Skeniraj uputstvo za upotrebu (ne čuva se kao slika)')+'</div>';
+
+  const leafletQueueHtml = leafletQueue.length>0 ? (
+    '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">'+
+    leafletQueue.map((d,idx)=>'<div style="position:relative;"><img src="'+d+'" style="width:56px;height:56px;object-fit:cover;border-radius:9px;border:1px solid var(--line);">'+
+      '<button onclick="removeFromLeafletQueue('+idx+')" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--coral);color:#fff;border:none;font-size:11px;line-height:1;cursor:pointer;">✕</button></div>').join('')+
+    '</div>'+
+    '<button class="save-btn" style="width:auto; padding:10px 16px; border-radius:11px; font-size:13px; margin-top:10px;" onclick="sendLeafletQueue()">📤 Pošalji na AI ('+leafletQueue.length+')</button>'
+  ) : '';
+
+  const analyzingHtml = formAnalyzing ?
+    '<div class="ai-analyzing"><span class="ai-spinner"></span> AI čita podatke...</div>' : '';
+
+  const warningsHtml = (!formAnalyzing && formAiWarnings.length>0) ?
+    '<div class="field-warn" style="margin-bottom:14px;">⚠ AI nije prepoznao: '+formAiWarnings.join(', ')+' — dopuni ručno.</div>' : '';
+
+  b.innerHTML = '<div class="modal">'+
+    '<button class="modal-close-x" onclick="closeItemForm()">✕</button>'+
+    '<h2 class="serif">'+(formEditId?'Izmeni stavku':'Dodaj stavku')+'</h2>'+
+    '<div class="field">'+photoSectionHtml+leafletBtnHtml+leafletQueueHtml+analyzingHtml+warningsHtml+'</div>'+
+    '<div class="field"><label>Naziv</label><input id="fNaziv" type="text" value="'+escapeHtml(formDraft.naziv)+'" oninput="updateDraft(\'naziv\',this.value)" placeholder="npr. Brufen 400mg"></div>'+
+    '<div class="field"><label>Tip</label><input id="fTip" type="text" list="typeList" value="'+escapeHtml(formDraft.tip)+'" oninput="updateDraft(\'tip\',this.value)" placeholder="izaberi ili upiši svoj">'+
+    '<datalist id="typeList">'+KNOWN_TYPES.map(t=>'<option value="'+t+'">').join('')+'</datalist></div>'+
+    '<div class="field"><label>Za šta se koristi (kategorija)</label><input id="fKategorija" type="text" list="catList" value="'+escapeHtml(formDraft.kategorija)+'" oninput="updateDraft(\'kategorija\',this.value)" placeholder="npr. Protiv bolova">'+
+    '<datalist id="catList">'+cats.map(c=>'<option value="'+escapeHtml(c)+'">').join('')+'</datalist></div>'+
+    '<div class="field"><label>Način upotrebe</label><textarea id="fDoziranje" oninput="updateDraft(\'doziranje\',this.value)" placeholder="npr. 1 tableta na 8h, posle jela">'+escapeHtml(formDraft.doziranje)+'</textarea></div>'+
+    '<div class="field"><label>Napomena / upozorenje</label><textarea id="fNapomena" oninput="updateDraft(\'napomena\',this.value)" placeholder="npr. ne uzimati na prazan stomak">'+escapeHtml(formDraft.napomena)+'</textarea></div>'+
+    '<div class="field"><label>Rok trajanja (mesec i godina)</label><input id="fRok" type="month" value="'+(formDraft.rok ? formDraft.rok.slice(0,7) : '')+'" oninput="updateDraft(\'rok\',this.value)"></div>'+
+    '<div class="modal-actions">'+
+    '<button class="cancel-btn" onclick="closeItemForm()">Otkaži</button>'+
+    '<button class="save-btn" onclick="saveItemForm()">Sačuvaj</button>'+
+    '</div></div>';
+
+  if(isNew){
+    document.body.appendChild(b);
+    document.body.style.overflow='hidden';
+    b.addEventListener('click',(e)=>{ if(e.target===b) closeItemForm(); });
+  }
+}
+function closeItemForm(){
+  if(formCloseFn){ closeOverlay(formCloseFn); formCloseFn = null; }
+}
+function saveItemForm(){
+  if(!formDraft.naziv || !formDraft.naziv.trim()){ const el=document.getElementById('fNaziv'); if(el) el.focus(); return; }
+  const editId = formEditId;
+  if(editId){
+    const it = getItem(editId);
+    Object.assign(it, formDraft);
+  } else {
+    items.push(Object.assign({ id: uid('m') }, formDraft));
+  }
+  persistItems();
+  render();
+  if(editId){
+    const oldFn = formCloseFn;
+    formCloseFn = null;
+    openDetail(editId, oldFn);
+  } else {
+    closeItemForm();
+  }
+}
+
+/* ---------- ATTACH FOTOGRAFIJE + AI CITANJE ---------- */
+let attachCloseFn = null;
+function openFormAttachMenu(purpose){
+  purpose = purpose || 'main';
+  const title = purpose==='leaflet' ? 'Fotografija/dokument uputstva za upotrebu' : 'Fotografija pakovanja';
+  const m = document.createElement('div'); m.className='modal-backdrop small-modal'; m.id='attachMenuBackdrop';
+  m.innerHTML = '<div class="modal" style="border-radius:20px;">'+
+    '<button class="modal-close-x" onclick="closeFormAttachMenu()">✕</button>'+
+    '<h2 class="serif" style="font-size:17px;">'+title+'</h2>'+
+    '<div class="attach-menu-options">'+
+    '<button class="attach-menu-opt" onclick="pickPhotoFor(\'camera\',\''+purpose+'\')"><span class="ao-icon">📷</span><span>Kamera</span></button>'+
+    '<button class="attach-menu-opt" onclick="pickPhotoFor(\'gallery\',\''+purpose+'\')"><span class="ao-icon">🖼️</span><span>Galerija</span></button>'+
+    '<button class="attach-menu-opt" onclick="pickPhotoFor(\'files\',\''+purpose+'\')"><span class="ao-icon">📄</span><span>Dokumenti</span></button>'+
+    '</div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click',(e)=>{ if(e.target===m) closeFormAttachMenu(); });
+  attachCloseFn = ()=>{ const mm=document.getElementById('attachMenuBackdrop'); if(mm) mm.remove(); attachCloseFn=null; };
+  pushOverlay(attachCloseFn);
+}
+function closeFormAttachMenu(){
+  if(attachCloseFn){ closeOverlay(attachCloseFn); attachCloseFn = null; }
+}
+function pickPhotoFor(kind, purpose){
+  purpose = purpose || 'main';
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = kind==='files' ? 'image/*,.pdf' : 'image/*';
+  if(kind==='camera') inp.capture = 'environment';
+  inp.onchange = ()=>{
+    const f = inp.files && inp.files[0];
+    if(!f) return;
+    const isPdf = f.type === 'application/pdf';
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      closeFormAttachMenu();
+      if(isPdf){
+        handlePickedMedia(e.target.result, purpose);
+      } else {
+        openCropScreen(e.target.result, purpose);
+      }
+    };
+    reader.readAsDataURL(f);
+  };
+  inp.click();
+}
+function removeFormPhoto(){ formDraft.slika = null; renderItemForm(); }
+function handlePickedMedia(dataUrl, purpose){
+  if(purpose === 'leaflet'){
+    leafletQueue.push(dataUrl);
+    renderItemForm();
+  } else {
+    formDraft.slika = dataUrl;
+    renderItemForm();
+    triggerAIPhotoRead();
+  }
+}
+function removeFromLeafletQueue(idx){
+  leafletQueue.splice(idx,1);
+  renderItemForm();
+}
+
+/* ---------- RUČNO OPSECANJE FOTOGRAFIJE ---------- */
+let cropState = null;
+let cropCloseFn = null;
+function openCropScreen(dataUrl, purpose){
+  const img = new Image();
+  img.onload = ()=>{ buildCropScreen(dataUrl, img, purpose); };
+  img.src = dataUrl;
+}
+function buildCropScreen(dataUrl, imgEl, purpose){
+  const stageMaxW = Math.min(window.innerWidth - 32, 480);
+  const stageMaxH = window.innerHeight * 0.6;
+  const fitScale = Math.min(1, stageMaxW / imgEl.naturalWidth, stageMaxH / imgEl.naturalHeight);
+  const dispW = imgEl.naturalWidth * fitScale;
+  const dispH = imgEl.naturalHeight * fitScale;
+  const boxSize = Math.min(dispW, dispH) * 0.75;
+  cropState = {
+    dataUrl, img: imgEl, scale: fitScale, dispW, dispH, purpose: purpose||'main',
+    box: { x: (dispW-boxSize)/2, y: (dispH-boxSize)/2, w: boxSize, h: boxSize },
+    drag: null, onMove: null, onUp: null
+  };
+  const headerText = purpose==='leaflet' ? 'Prevuci i uokviri deo teksta koji AI treba da pročita' : 'Prevuci i uokviri deo slike koji želiš da zadržiš';
+  const root = document.createElement('div');
+  root.className = 'crop-overlay';
+  root.id = 'cropOverlayRoot';
+  root.innerHTML =
+    '<div class="crop-header">'+headerText+'</div>'+
+    '<div class="crop-stage" id="cropStage">'+
+    '<div class="crop-img-wrap" id="cropImgWrap" style="width:'+dispW+'px;height:'+dispH+'px;">'+
+    '<img src="'+dataUrl+'" style="width:100%;height:100%;display:block;" draggable="false">'+
+    '<div class="crop-box" id="cropBox"><div class="crop-handle" id="cropHandle"></div></div>'+
+    '</div></div>'+
+    '<div class="crop-actions">'+
+    '<button class="crop-skip" onclick="skipCrop()">Preskoči (cela slika)</button>'+
+    '<button class="crop-confirm" onclick="confirmCrop()">Sačuvaj isečak</button>'+
+    '</div>';
+  document.body.appendChild(root);
+  updateCropBoxStyle();
+  attachCropDragHandlers();
+  cropCloseFn = ()=>{
+    if(cropState){
+      if(cropState.onMove) window.removeEventListener('pointermove', cropState.onMove);
+      if(cropState.onUp){ window.removeEventListener('pointerup', cropState.onUp); window.removeEventListener('pointercancel', cropState.onUp); }
+    }
+    const el = document.getElementById('cropOverlayRoot');
+    if(el) el.remove();
+    cropState = null;
+    cropCloseFn = null;
+  };
+  pushOverlay(cropCloseFn);
+}
+function updateCropBoxStyle(){
+  const el = document.getElementById('cropBox');
+  if(!el || !cropState) return;
+  const b = cropState.box;
+  el.style.left = b.x+'px'; el.style.top = b.y+'px';
+  el.style.width = b.w+'px'; el.style.height = b.h+'px';
+}
+function attachCropDragHandlers(){
+  const box = document.getElementById('cropBox');
+  const handle = document.getElementById('cropHandle');
+  const wrap = document.getElementById('cropImgWrap');
+  if(!box || !handle || !wrap || !cropState) return;
+
+  function pos(e){
+    const rect = wrap.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+  function onMoveStart(e){
+    e.preventDefault();
+    const p = pos(e);
+    cropState.drag = { type:'move', startX:p.x, startY:p.y, origX:cropState.box.x, origY:cropState.box.y };
+  }
+  function onResizeStart(e){
+    e.preventDefault(); e.stopPropagation();
+    const p = pos(e);
+    cropState.drag = { type:'resize', startX:p.x, startY:p.y, origW:cropState.box.w, origH:cropState.box.h };
+  }
+  function onMove(e){
+    if(!cropState || !cropState.drag) return;
+    e.preventDefault();
+    const p = pos(e);
+    const d = cropState.drag;
+    if(d.type==='move'){
+      let nx = d.origX + (p.x - d.startX);
+      let ny = d.origY + (p.y - d.startY);
+      nx = Math.max(0, Math.min(nx, cropState.dispW - cropState.box.w));
+      ny = Math.max(0, Math.min(ny, cropState.dispH - cropState.box.h));
+      cropState.box.x = nx; cropState.box.y = ny;
+    } else if(d.type==='resize'){
+      let nw = d.origW + (p.x - d.startX);
+      let nh = d.origH + (p.y - d.startY);
+      nw = Math.max(40, Math.min(nw, cropState.dispW - cropState.box.x));
+      nh = Math.max(40, Math.min(nh, cropState.dispH - cropState.box.y));
+      cropState.box.w = nw; cropState.box.h = nh;
+    }
+    updateCropBoxStyle();
+  }
+  function onUp(){ if(cropState) cropState.drag = null; }
+
+  box.addEventListener('pointerdown', onMoveStart);
+  handle.addEventListener('pointerdown', onResizeStart);
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', onUp);
+  cropState.onMove = onMove;
+  cropState.onUp = onUp;
+}
+function closeCropScreen(){
+  if(cropCloseFn){ closeOverlay(cropCloseFn); cropCloseFn = null; }
+}
+function skipCrop(){
+  const dataUrl = cropState ? cropState.dataUrl : null;
+  const purpose = cropState ? cropState.purpose : 'main';
+  closeCropScreen();
+  if(dataUrl) handlePickedMedia(dataUrl, purpose);
+}
+function confirmCrop(){
+  if(!cropState) return;
+  const { img, scale, box, purpose } = cropState;
+  const sx = box.x/scale, sy = box.y/scale, sw = box.w/scale, sh = box.h/scale;
+  const maxDim = 900;
+  let outW = sw, outH = sh;
+  if(outW > maxDim || outH > maxDim){
+    const ratio = Math.min(maxDim/outW, maxDim/outH);
+    outW = outW*ratio; outH = outH*ratio;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(outW));
+  canvas.height = Math.max(1, Math.round(outH));
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  closeCropScreen();
+  handlePickedMedia(croppedDataUrl, purpose);
+}
+
+async function triggerAIPhotoRead(){
+  const apiKey = getApiKey();
+  if(!apiKey){
+    showBanner('Nije unet Gemini API ključ. Idi u Podešavanja (⚙) i unesi ga da bi AI čitanje sa slike radilo.');
+    return;
+  }
+  formAnalyzing = true;
+  renderItemForm();
+  try{
+    const result = await callGeminiForMedicine(formDraft.slika);
+    // popuni samo prazna polja, ne pregazi ono sto je korisnik vec uneo
+    const warnings = [];
+    if(result.naziv && !formDraft.naziv.trim()) formDraft.naziv = result.naziv;
+    if(result.tip && !formDraft.tip.trim()) formDraft.tip = result.tip;
+    if(result.doziranje && !formDraft.doziranje.trim()) formDraft.doziranje = result.doziranje; else if(!result.doziranje && !formDraft.doziranje.trim()) warnings.push('doziranje');
+    if(result.kategorija && !formDraft.kategorija.trim()) formDraft.kategorija = result.kategorija;
+    if(result.rok && !formDraft.rok) formDraft.rok = result.rok; else if(!result.rok && !formDraft.rok) warnings.push('rok trajanja');
+    if(!result.naziv && !formDraft.naziv.trim()) warnings.push('naziv');
+    formAiWarnings = warnings;
+  } catch(err){
+    showBanner(err && err.message ? err.message : 'Greška pri čitanju fotografije.');
+  }
+  formAnalyzing = false;
+  renderItemForm();
+}
+
+async function callGeminiForMedicine(dataUrl){
+  const apiKey = getApiKey();
+  const match = /^data:([^;]+);base64,(.*)$/s.exec(dataUrl);
+  if(!match) throw new Error('Neispravan format slike.');
+  const mimeType = match[1], base64Data = match[2];
+
+  const sys = 'Ovo je fotografija pakovanja leka, suplementa, vitamina ili slicnog proizvoda za kucnu apoteku. Procitaj SAMO ono sto je jasno vidljivo na slici. Vrati ISKLJUCIVO JSON objekat, bez markdown, bez ostalog teksta, u formatu: '+
+    '{"naziv": tacan naziv proizvoda kako pise na pakovanju, ZAJEDNO sa jacinom/dozom ako je odstampana uz naziv (npr. "Brufen 400mg") - zadrzi original, ne prevodi brend, '+
+    '"tip": najbolja procena jedne od kategorija ["Lek na recept","Lek bez recepta","Suplement","Vitamin","Krema","Probiotik","Protein"] na osnovu pakovanja, ili prazan string ako nije jasno, '+
+    '"doziranje": SAMO stvarno uputstvo za upotrebu sa pakovanja - koliko puta dnevno, kada, kako (npr. "1 tableta 2x dnevno, posle jela") - na srpskom jeziku; NIKAD ovde ne stavljaj samu jacinu/dozu proizvoda (ta ide u naziv, npr. "400mg" ne ide ovde); ako uputstvo za upotrebu nije vidljivo na pakovanju, vrati prazan string, '+
+    '"kategorija": kratka procena za sta se koristi na srpskom (npr. "protiv bolova", "za stomak", "koza") SAMO ako se moze zakljuciti sa pakovanja, ili prazan string, '+
+    '"rok": datum isteka roka trajanja u formatu GGGG-MM (SAMO mesec i godina, bez dana - na pakovanjima lekova rok obicno stoji odstampan samo kao MM/GGGG, npr. "02/2028" postaje "2028-02") SAMO ako je jasno napisan i citljiv na slici, inace null}. '+
+    'VAZNO: nikad ne izmisljaj rok trajanja ako nije jasno citljiv - u tom slucaju vrati null za "rok". Ne izmisljaj ni ostala polja - ako nesto nije vidljivo, vrati prazan string.';
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(()=>controller.abort(), 20000);
+  let resp;
+  try{
+    resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL+':generateContent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-goog-api-key':apiKey },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: sys }] },
+        contents: [{ role:'user', parts: [{ inlineData: { mimeType, data: base64Data } }] }],
+        generationConfig: { responseMimeType:'application/json', maxOutputTokens: 2000 }
+      }),
+      signal: controller.signal
+    });
+  } catch(fetchErr){
+    clearTimeout(timeoutId);
+    if(fetchErr.name==='AbortError') throw new Error('Server nije odgovorio na vreme. Proveri internet i probaj ponovo.');
+    throw new Error('Ne mogu da se povežem sa AI servisom: '+fetchErr.message);
+  }
+  clearTimeout(timeoutId);
+  if(!resp.ok){
+    const errBody = await resp.text().catch(()=> '');
+    if(resp.status===400 && /API key/i.test(errBody)) throw new Error('Gemini API ključ nije važeći. Proveri ga u Podešavanjima.');
+    if(resp.status===401) throw new Error('Google nije prihvatio ključ (401 - neautorizovan). Proveri da li si ključ tačno nalepio u Podešavanjima, ili napravi nov ključ na aistudio.google.com.');
+    throw new Error('Gemini API greška ('+resp.status+'): '+errBody.slice(0,180));
+  }
+  const data = await resp.json();
+  const candidate = data.candidates && data.candidates[0];
+  if(!candidate) throw new Error('Gemini nije vratio rezultat.');
+  const raw = (candidate.content && candidate.content.parts && candidate.content.parts[0] && candidate.content.parts[0].text) || '';
+  let result;
+  try{ result = JSON.parse(raw); }catch(e){ throw new Error('Ne mogu da protumačim AI odgovor.'); }
+  return {
+    naziv: (result.naziv||'').trim(),
+    tip: (result.tip||'').trim(),
+    doziranje: (result.doziranje||'').trim(),
+    kategorija: (result.kategorija||'').trim(),
+    rok: result.rok || null
+  };
+}
+
+/* ---------- CITANJE UPUTSTVA ZA UPOTREBU (leaflet / dokument) ---------- */
+function sendLeafletQueue(){
+  if(leafletQueue.length===0) return;
+  triggerAILeafletRead(leafletQueue.slice());
+}
+async function triggerAILeafletRead(dataUrls){
+  const apiKey = getApiKey();
+  if(!apiKey){
+    showBanner('Nije unet Gemini API ključ. Idi u Podešavanja (⚙) i unesi ga.');
+    return;
+  }
+  formAnalyzing = true;
+  renderItemForm();
+  try{
+    const result = await callGeminiForLeaflet(dataUrls);
+    let filledAny = false;
+    if(result.doziranje && !formDraft.doziranje.trim()){ formDraft.doziranje = result.doziranje; filledAny = true; }
+    if(result.kategorija && !formDraft.kategorija.trim()){ formDraft.kategorija = result.kategorija; filledAny = true; }
+    if(result.rok && !formDraft.rok){ formDraft.rok = result.rok; filledAny = true; }
+    if(result.napomena){
+      if(!formDraft.napomena.trim()){ formDraft.napomena = result.napomena; filledAny = true; }
+      else if(!formDraft.napomena.includes(result.napomena)){ formDraft.napomena = formDraft.napomena + '; ' + result.napomena; filledAny = true; }
+    }
+    if(result.prosireno){
+      if(!formDraft.prosireno.trim()){ formDraft.prosireno = result.prosireno; filledAny = true; }
+      else if(!formDraft.prosireno.includes(result.prosireno)){ formDraft.prosireno = formDraft.prosireno + '\n\n' + result.prosireno; filledAny = true; }
+    }
+    leafletQueue = [];
+    if(!filledAny) showBanner('AI nije pronašao nove podatke u tim slikama (ili su polja već popunjena).', 'info');
+  } catch(err){
+    showBanner(err && err.message ? err.message : 'Greška pri čitanju uputstva.');
+  }
+  formAnalyzing = false;
+  renderItemForm();
+}
+
+async function callGeminiForLeaflet(dataUrls){
+  const apiKey = getApiKey();
+  const parts = dataUrls.map(dataUrl=>{
+    const match = /^data:([^;]+);base64,(.*)$/s.exec(dataUrl);
+    if(!match) throw new Error('Neispravan format fajla.');
+    return { inlineData: { mimeType: match[1], data: match[2] } };
+  });
+
+  const sys = 'Ovo je '+(dataUrls.length>1?('ukupno '+dataUrls.length+' fotografija/dokumenata koje zajedno čine'):'fotografija ili dokument koji predstavlja')+' uputstvo za upotrebu leka/suplementa (papirić iz kutije, ili dokument preuzet sa interneta) - moguće su različite strane istog uputstva. Sagledaj SVE priložene slike ZAJEDNO kao jednu celinu pre nego što odgovoriš. Ova uputstva su obično dugačka i puna pravnog/medicinskog teksta - tvoj zadatak je da iz svega toga izvučeš SUŠTINU, kratko i jasno, kao da to čita običan čovek kod kuće, ne kompletan pravni tekst. Vrati ISKLJUČIVO JSON objekat, bez markdown, bez ostalog teksta, u formatu: '+
+    '{"doziranje": SAŽETO stvarno uputstvo za upotrebu u JEDNOJ kratkoj rečenici - koliko, kada, kako (na srpskom jeziku, npr. "1 tableta 2x dnevno, posle jela"), ili prazan string ako se ne može naći, '+
+    '"napomena": NAJVAŽNIJA 1-3 upozorenja/kontraindikacije - samo ono što je zaista bitno za bezbednu upotrebu kod kuće (npr. "ne davati deci ispod 12 god., ne uzimati sa alkoholom"), NIKAD ne prepisuj celu listu nuspojava ili pravni tekst, kratko i jasno, ili prazan string, '+
+    '"kategorija": 2-4 reči za šta se koristi (na srpskom, npr. "protiv bolova i temperature"), ili prazan string, '+
+    '"rok": mesec i godina isteka roka trajanja u formatu GGGG-MM (SAMO mesec/godina, bez dana - lekovi obicno imaju odstampan samo MM/GGGG) SAMO ako je eksplicitno napisan, inače null, '+
+    '"prosireno": malo detaljniji sažetak u 3-6 kratkih rečenica ili kratkih stavki, sastavljen iz SVIH priloženih slika zajedno - obuhvati način upotrebe, glavne mere opreza/kontraindikacije, i čuvanje leka ako je pomenuto; i dalje SAŽETO i bez pravnog žargona, samo malo više detalja nego u poljima iznad, na srpskom jeziku, ili prazan string ako nema dovoljno čitljivog teksta}. '+
+    'VAŽNO: budi kratak i koncizan u svakom polju (ne prepisuj pasuse teksta) i ne izmišljaj ništa što nije napisano u dokumentu(ima). Prevedi na srpski ako je tekst na drugom jeziku.';
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(()=>controller.abort(), 35000);
+  let resp;
+  try{
+    resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL+':generateContent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-goog-api-key':apiKey },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: sys }] },
+        contents: [{ role:'user', parts: parts }],
+        generationConfig: { responseMimeType:'application/json', maxOutputTokens: 1100 }
+      }),
+      signal: controller.signal
+    });
+  } catch(fetchErr){
+    clearTimeout(timeoutId);
+    if(fetchErr.name==='AbortError') throw new Error('Server nije odgovorio na vreme. Probaj ponovo.');
+    throw new Error('Ne mogu da se povežem sa AI servisom: '+fetchErr.message);
+  }
+  clearTimeout(timeoutId);
+  if(!resp.ok){
+    const errBody = await resp.text().catch(()=> '');
+    if(resp.status===401) throw new Error('Google nije prihvatio ključ (401 - neautorizovan). Proveri ga u Podešavanjima.');
+    throw new Error('Gemini API greška ('+resp.status+'): '+errBody.slice(0,180));
+  }
+  const data = await resp.json();
+  const candidate = data.candidates && data.candidates[0];
+  if(!candidate) throw new Error('Gemini nije vratio rezultat.');
+  const raw = (candidate.content && candidate.content.parts && candidate.content.parts[0] && candidate.content.parts[0].text) || '';
+  let result;
+  try{ result = JSON.parse(raw); }catch(e){ throw new Error('Ne mogu da protumačim AI odgovor.'); }
+  return {
+    doziranje: (result.doziranje||'').trim(),
+    napomena: (result.napomena||'').trim(),
+    kategorija: (result.kategorija||'').trim(),
+    rok: result.rok || null,
+    prosireno: (result.prosireno||'').trim()
+  };
+}
+
+/* ---------- PRETRAGA INTERNETA SA IZVOROM (Google Search grounding) ---------- */
+async function fetchInternetInfo(id){
+  const it = getItem(id);
+  if(!it) return;
+  const apiKey = getApiKey();
+  if(!apiKey){
+    showBanner('Nije unet Gemini API ključ. Idi u Podešavanja (⚙) i unesi ga.');
+    return;
+  }
+  internetSearchLoadingId = id;
+  renderDetail();
+  try{
+    const result = await callGeminiWebSearch(it.naziv, it.tip);
+    it.internetInfo = result;
+    persistItems();
+  } catch(err){
+    showBanner(err && err.message ? err.message : 'Greška pri pretrazi interneta.');
+  }
+  internetSearchLoadingId = null;
+  renderDetail();
+}
+
+async function callGeminiWebSearch(naziv, tip){
+  const apiKey = getApiKey();
+  const sys = 'Pretraži internet i saznaj pouzdane informacije o proizvodu "'+naziv+'"'+(tip?(' ('+tip+')'):'')+
+    '. Odgovori na srpskom jeziku, kratko i jasno (najviše 5 rečenica): za šta se koristi, uobičajeno doziranje, i najvažnija upozorenja/kontraindikacije. '+
+    'Ako ne možeš pouzdano da identifikuješ tačno ovaj proizvod na internetu, jasno to reci umesto da izmišljaš podatke.';
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(()=>controller.abort(), 25000);
+  let resp;
+  try{
+    resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL_SEARCH+':generateContent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-goog-api-key':apiKey },
+      body: JSON.stringify({
+        contents: [{ role:'user', parts: [{ text: sys }] }],
+        tools: [{ google_search: {} }],
+        generationConfig: { maxOutputTokens: 1200, temperature: 0.2 }
+      }),
+      signal: controller.signal
+    });
+  } catch(fetchErr){
+    clearTimeout(timeoutId);
+    if(fetchErr.name==='AbortError') throw new Error('Server nije odgovorio na vreme. Probaj ponovo.');
+    throw new Error('Ne mogu da se povežem sa AI servisom: '+fetchErr.message);
+  }
+  clearTimeout(timeoutId);
+  if(!resp.ok){
+    const errBody = await resp.text().catch(()=> '');
+    if(resp.status===401) throw new Error('Google nije prihvatio ključ (401 - neautorizovan). Proveri da li si ključ tačno nalepio u Podešavanjima, ili napravi nov ključ na aistudio.google.com.');
+    throw new Error('Gemini API greška ('+resp.status+'): '+errBody.slice(0,180));
+  }
+  const data = await resp.json();
+  const candidate = data.candidates && data.candidates[0];
+  if(!candidate) throw new Error('Gemini nije vratio rezultat.');
+  const text = (candidate.content && candidate.content.parts && candidate.content.parts.map(p=>p.text||'').join(' ').trim()) || '';
+  if(!text) throw new Error('AI nije vratio odgovor.');
+  let izvorUrl = '', izvorNaziv = '';
+  const gm = candidate.groundingMetadata;
+  if(gm && gm.groundingChunks && gm.groundingChunks.length){
+    const web = gm.groundingChunks[0].web;
+    if(web){ izvorUrl = web.uri||''; izvorNaziv = web.title||''; }
+  }
+  return { tekst: text, izvorUrl, izvorNaziv, datum: todayISO() };
+}
+
+/* ---------- SETTINGS ---------- */
+let settingsCloseFn = null;
+function openSettings(){
+  const b = document.createElement('div'); b.className='modal-backdrop'; b.id='settingsBackdrop';
+  b.innerHTML = '<div class="modal">'+
+    '<button class="modal-close-x" onclick="closeSettings()">✕</button>'+
+    '<h2 class="serif">Podešavanja</h2>'+
+    '<div class="field"><label>Upozori me koliko dana pre isteka roka</label>'+
+    '<input id="sThreshold" type="number" min="1" max="365" value="'+settings.expiryThresholdDays+'"></div>'+
+    '<div class="field-hint" style="margin-bottom:18px;">Lekovi i suplementi čiji rok ističe unutar ovog broja dana pojaviće se u traci "Ističe uskoro" na početnom ekranu.</div>'+
+    '<div class="field"><label>Google Gemini API ključ</label>'+
+    '<input id="sApiKey" type="password" value="'+escapeHtml(getApiKey())+'" placeholder="AIza..."></div>'+
+    '<div class="field-hint">Ključ se čuva samo na ovom telefonu, u ovom pregledaču. Napraviš ga besplatno na aistudio.google.com (bez kartice) → Get API key. Potreban je da bi čitanje fotografije pakovanja radilo.</div>'+
+    '<div class="modal-actions" style="margin-top:16px;"><button class="cancel-btn" onclick="closeSettings()">Otkaži</button>'+
+    '<button class="save-btn" onclick="saveSettings()">Sačuvaj</button></div>'+
+    '</div>';
+  document.body.appendChild(b);
+  document.body.style.overflow='hidden';
+  b.addEventListener('click',(e)=>{ if(e.target===b) closeSettings(); });
+  settingsCloseFn = ()=>{ const bb=document.getElementById('settingsBackdrop'); if(bb) bb.remove(); document.body.style.overflow=''; settingsCloseFn=null; };
+  pushOverlay(settingsCloseFn);
+}
+function closeSettings(){
+  if(settingsCloseFn){ closeOverlay(settingsCloseFn); settingsCloseFn = null; }
+}
+function saveSettings(){
+  const v = parseInt(document.getElementById('sThreshold').value)||60;
+  settings.expiryThresholdDays = v;
+  persistSettings();
+  setApiKey(document.getElementById('sApiKey').value.trim());
+  closeSettings();
+  render();
+}
+
+/* ---------- CONFIRM ---------- */
+let __confirmYes = null;
+let confirmCloseFn = null;
+function showConfirm(msg, onYes){
+  __confirmYes = onYes;
+  const b = document.createElement('div'); b.className='modal-backdrop'; b.id='confirmBackdrop';
+  b.innerHTML = '<div class="modal" style="border-radius:22px;">'+
+    '<h2 class="serif">Potvrda</h2>'+
+    '<p style="font-size:14.5px; color:var(--text); line-height:1.5; margin:0 0 20px;">'+escapeHtml(msg)+'</p>'+
+    '<div class="modal-actions"><button class="cancel-btn" onclick="closeConfirm()">Ne</button>'+
+    '<button class="delete-btn" onclick="runConfirmYes()">Da, obriši</button></div></div>';
+  document.body.appendChild(b);
+  b.addEventListener('click',(e)=>{ if(e.target===b) closeConfirm(); });
+  confirmCloseFn = ()=>{ const bb=document.getElementById('confirmBackdrop'); if(bb) bb.remove(); __confirmYes=null; confirmCloseFn=null; };
+  pushOverlay(confirmCloseFn);
+}
+function closeConfirm(){
+  if(confirmCloseFn){ closeOverlay(confirmCloseFn); confirmCloseFn = null; }
+}
+function runConfirmYes(){ const fn=__confirmYes; closeConfirm(); if(fn) fn(); }
+
+loadSettings();
+loadItems();
+render();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
