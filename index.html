@@ -744,9 +744,7 @@ function closeChatMode(){
 }
 function openItemFromChat(id){
   if(!getItem(id)) return;
-  const oldFn = chatCloseFn;
-  chatCloseFn = null;
-  openDetail(id, oldFn);
+  openDetail(id);
 }
 function escapeChatText(text){
   const escaped = escapeHtml(text);
