@@ -52,8 +52,7 @@
   /* ---- List ---- */
   .list-area{ padding:0 16px; }
   .section-label{ font-size:11px; font-weight:700; color:var(--text-dim); letter-spacing:0.2px; padding:4px 2px 8px; }
-  .group-header{ background:var(--green-deep); color:#fff; font-size:11px; font-weight:700; letter-spacing:0.4px; text-transform:uppercase; padding:8px 12px; border-radius:9px; margin:14px 0 8px; }
-  .grid-group-header{ grid-column:1 / -1; background:var(--green-deep); color:#fff; font-size:11px; font-weight:700; letter-spacing:0.4px; text-transform:uppercase; padding:8px 12px; border-radius:9px; margin:10px 0 2px; }
+  .group-header{ background:var(--green-pale); color:var(--green-deep); font-size:10px; font-weight:700; letter-spacing:0.3px; text-transform:uppercase; padding:5px 10px; border-radius:7px; margin:12px 0 7px; }
   .med-card{ display:flex; align-items:center; gap:12px; background:var(--bg-card); border:1px solid var(--line); border-radius:16px; padding:11px 13px; margin-bottom:9px; cursor:pointer; box-shadow:0 2px 4px rgba(43,43,36,0.07), 0 4px 12px rgba(43,43,36,0.08); }
   .card-added{ animation:cardFlash 1.8s ease; }
   @keyframes cardFlash{ 0%{ background:var(--amber-pale); } 100%{ background:var(--bg-card); } }
@@ -535,16 +534,12 @@ function render(){
   if(filtered.length===0){
     listHtml = '<div class="empty">'+(qWords.length ? 'Nema stavki koje odgovaraju pretrazi "'+escapeHtml(searchQuery)+'".' : 'Kućna apoteka je prazna.<br>Dodaj prvi lek ili suplement dugmetom ispod.')+'</div>';
   } else if(settings.viewMode==='mreza'){
-    let lastGroup = null;
     listHtml = '<div class="section-label">Sve stavke ('+filtered.length+')</div>'+
       '<div class="grid-list">'+
       filtered.map(it=>{
         const s = expiryStatus(it);
         const badgeClass = s.key==='ok' ? 'badge-ok' : s.key==='soon' ? 'badge-soon' : s.key==='expired' ? 'badge-expired' : 'badge-missing';
-        const gk = groupKeyForSort(it);
-        let headerHtml = '';
-        if(gk!==null && gk!==lastGroup){ headerHtml = '<div class="grid-group-header">'+escapeHtml(gk)+'</div>'; lastGroup = gk; }
-        return headerHtml+'<div class="grid-card" id="item-'+it.id+'" onclick="handleCardClick(\''+it.id+'\')" onpointerdown="startCardLongPress(\''+it.id+'\')" onpointerup="cancelCardLongPress()" onpointerleave="cancelCardLongPress()" onpointercancel="cancelCardLongPress()">'+
+        return '<div class="grid-card" id="item-'+it.id+'" onclick="handleCardClick(\''+it.id+'\')" onpointerdown="startCardLongPress(\''+it.id+'\')" onpointerup="cancelCardLongPress()" onpointerleave="cancelCardLongPress()" onpointercancel="cancelCardLongPress()">'+
           '<div class="med-thumb"'+(it.slika?' onclick="event.stopPropagation(); openPhotoFullScreen(\''+it.id+'\')"':'')+'>'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
           '<div class="gc-name">'+escapeHtml(displayNaziv(it.naziv))+'</div>'+
           '<div class="gc-sub">'+[it.tip, it.kategorija].filter(Boolean).map(escapeHtml).join(' · ')+'</div>'+
