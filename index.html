@@ -395,7 +395,7 @@ function render(){
         const s = expiryStatus(it);
         const badgeClass = s.key==='ok' ? 'badge-ok' : s.key==='soon' ? 'badge-soon' : s.key==='expired' ? 'badge-expired' : 'badge-missing';
         return '<div class="grid-card" onclick="openDetail(\''+it.id+'\')">'+
-          '<div class="med-thumb">'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
+          '<div class="med-thumb"'+(it.slika?' onclick="event.stopPropagation(); openPhotoFullScreen(\''+it.id+'\')"':'')+'>'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
           '<div class="gc-name">'+escapeHtml(it.naziv)+'</div>'+
           '<div class="gc-sub">'+[it.tip, it.kategorija].filter(Boolean).map(escapeHtml).join(' · ')+'</div>'+
           '<div class="med-badge gc-badge '+badgeClass+'">'+s.label+'</div>'+
@@ -408,7 +408,7 @@ function render(){
         const s = expiryStatus(it);
         const badgeClass = s.key==='ok' ? 'badge-ok' : s.key==='soon' ? 'badge-soon' : s.key==='expired' ? 'badge-expired' : 'badge-missing';
         return '<div class="med-card" onclick="openDetail(\''+it.id+'\')">'+
-          '<div class="med-thumb">'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
+          '<div class="med-thumb"'+(it.slika?' onclick="event.stopPropagation(); openPhotoFullScreen(\''+it.id+'\')"':'')+'>'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
           '<div class="med-info"><div class="med-name">'+escapeHtml(it.naziv)+'</div>'+
           '<div class="med-sub">'+[it.tip, it.kategorija].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div>'+
           '<div class="med-badge '+badgeClass+'">'+s.label+'</div>'+
@@ -533,8 +533,8 @@ function renderDetail(){
   document.body.style.overflow='hidden';
 }
 let photoFullCloseFn = null;
-function openPhotoFullScreen(){
-  const it = getItem(openDetailId);
+function openPhotoFullScreen(id){
+  const it = getItem(id || openDetailId);
   if(!it || !it.slika) return;
   const p = document.createElement('div'); p.className='photo-full'; p.id='photoFullEl';
   p.innerHTML = '<button class="photo-full-close" onclick="closePhotoFullScreen()">✕</button><img src="'+it.slika+'">';
