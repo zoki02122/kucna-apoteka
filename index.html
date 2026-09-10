@@ -1417,6 +1417,8 @@ async function triggerAILeafletRead(dataUrls){
   try{
     const result = await callGeminiForLeaflet(dataUrls);
     let filledAny = false;
+    if(result.naziv && !formDraft.naziv.trim()){ formDraft.naziv = result.naziv; filledAny = true; }
+    if(result.tip && !formDraft.tip.trim()){ formDraft.tip = result.tip; filledAny = true; }
     if(result.doziranje && !formDraft.doziranje.trim()){ formDraft.doziranje = result.doziranje; filledAny = true; }
     if(result.kategorija && !formDraft.kategorija.trim()){ formDraft.kategorija = result.kategorija; filledAny = true; }
     if(result.rok && !formDraft.rok){ formDraft.rok = result.rok; filledAny = true; }
@@ -1446,7 +1448,9 @@ async function callGeminiForLeaflet(dataUrls){
   });
 
   const sys = 'Ovo je '+(dataUrls.length>1?('ukupno '+dataUrls.length+' fotografija/dokumenata koje zajedno čine'):'fotografija ili dokument koji predstavlja')+' uputstvo za upotrebu leka/suplementa (papirić iz kutije, ili dokument preuzet sa interneta) - moguće su različite strane istog uputstva. Sagledaj SVE priložene slike ZAJEDNO kao jednu celinu pre nego što odgovoriš. Ova uputstva su obično dugačka i puna pravnog/medicinskog teksta - tvoj zadatak je da iz svega toga izvučeš SUŠTINU, kratko i jasno, kao da to čita običan čovek kod kuće, ne kompletan pravni tekst. Vrati ISKLJUČIVO JSON objekat, bez markdown, bez ostalog teksta, u formatu: '+
-    '{"doziranje": SAŽETO stvarno uputstvo za upotrebu u JEDNOJ kratkoj rečenici - koliko, kada, kako (na srpskom jeziku, npr. "1 tableta 2x dnevno, posle jela"), ili prazan string ako se ne može naći, '+
+    '{"naziv": tačan naziv proizvoda kako je napisan u dokumentu (zadrži original, ne prevodi brend, uključi jačinu/dozu ako je navedena uz naziv), ili prazan string ako nije jasno navedeno, '+
+    '"tip": najbolja procena jedne od ["Lek na recept","Lek bez recepta","Suplement","Vitamin","Krema","Probiotik","Protein"] na osnovu dokumenta, ili prazan string ako nije jasno, '+
+    '"doziranje": SAŽETO stvarno uputstvo za upotrebu u JEDNOJ kratkoj rečenici - koliko, kada, kako (na srpskom jeziku, npr. "1 tableta 2x dnevno, posle jela"), ili prazan string ako se ne može naći, '+
     '"napomena": NAJVAŽNIJA 1-3 upozorenja/kontraindikacije - samo ono što je zaista bitno za bezbednu upotrebu kod kuće (npr. "ne davati deci ispod 12 god., ne uzimati sa alkoholom"), NIKAD ne prepisuj celu listu nuspojava ili pravni tekst, kratko i jasno, ili prazan string, '+
     '"kategorija": KRATKA klasifikacija u 2-4 reči na srpskom (npr. "antibiotici", "vitamini", "protiv bolova") - ne detaljan opis, samo kratka oznaka vrste/namene, ili prazan string ako se ne može naći, '+
     '"rok": mesec i godina isteka roka trajanja u formatu GGGG-MM (SAMO mesec/godina, bez dana - lekovi obicno imaju odstampan samo MM/GGGG) SAMO ako je eksplicitno napisan, inače null, '+
@@ -1485,6 +1489,8 @@ async function callGeminiForLeaflet(dataUrls){
   let result;
   try{ result = JSON.parse(raw); }catch(e){ throw new Error('Ne mogu da protumačim AI odgovor.'); }
   return {
+    naziv: (result.naziv||'').trim(),
+    tip: (result.tip||'').trim(),
     doziranje: (result.doziranje||'').trim(),
     napomena: (result.napomena||'').trim(),
     kategorija: (result.kategorija||'').trim(),
