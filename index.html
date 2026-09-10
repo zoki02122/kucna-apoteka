@@ -323,6 +323,126 @@ function expiryStatus(item){
 }
 
 function getItem(id){ return items.find(i=>i.id===id); }
+
+/* ---------- DUGI PRITISAK NA KARTICU -> BRZI MENI ---------- */
+let cardLongPressTimer = null;
+let cardLongPressFired = false;
+function startCardLongPress(id){
+  cardLongPressFired = false;
+  clearTimeout(cardLongPressTimer);
+  cardLongPressTimer = setTimeout(()=>{
+    cardLongPressFired = true;
+    if(navigator.vibrate) navigator.vibrate(30);
+    openCardQuickMenu(id);
+  }, 500);
+}
+function cancelCardLongPress(){ clearTimeout(cardLongPressTimer); }
+function handleCardClick(id){
+  if(cardLongPressFired){ cardLongPressFired = false; return; }
+  openDetail(id);
+}
+let cardMenuCloseFn = null;
+function openCardQuickMenu(id){
+  const it = getItem(id);
+  if(!it) return;
+  const b = document.createElement('div'); b.className='modal-backdrop small-modal'; b.id='cardMenuBackdrop';
+  b.innerHTML = '<div class="modal" style="border-radius:20px;">'+
+    '<button class="modal-close-x" onclick="closeCardQuickMenu()">✕</button>'+
+    '<h2 class="serif" style="font-size:16px; padding-right:30px;">'+escapeHtml(it.naziv)+'</h2>'+
+    '<div style="display:flex; flex-direction:column; gap:9px; margin-top:4px;">'+
+    '<button class="cancel-btn" style="text-align:left; padding:13px 14px; border-radius:12px; font-weight:700; font-size:14px;" onclick="quickAddToShoppingList(\''+it.id+'\')">🛒 Dodaj na spisak za kupovinu</button>'+
+    '<button class="delete-btn" style="text-align:left; padding:13px 14px; border-radius:12px; font-weight:700; font-size:14px;" onclick="quickDeleteFromMenu(\''+it.id+'\')">🗑 Obriši</button>'+
+    '</div></div>';
+  document.body.appendChild(b);
+  b.addEventListener('click',(e)=>{ if(e.target===b) closeCardQuickMenu(); });
+  cardMenuCloseFn = ()=>{ const bb=document.getElementById('cardMenuBackdrop'); if(bb) bb.remove(); cardMenuCloseFn=null; };
+  pushOverlay(cardMenuCloseFn);
+}
+function closeCardQuickMenu(){
+  if(cardMenuCloseFn){ closeOverlay(cardMenuCloseFn); cardMenuCloseFn = null; }
+}
+function quickDeleteFromMenu(id){
+  closeCardQuickMenu();
+  confirmDeleteItem(id);
+}
+
+/* ---------- SPISAK ZA KUPOVINU ---------- */
+let shoppingList = [];
+function persistShoppingList(){ lsSet('apoteka:shopping', JSON.stringify(shoppingList)); }
+function loadShoppingList(){
+  const saved = lsGet('apoteka:shopping');
+  if(saved && saved.value){ try{ shoppingList = JSON.parse(saved.value); }catch(e){} }
+}
+function addToShoppingList(tekst){
+  if(!tekst || !tekst.trim()) return;
+  shoppingList.push({ id: uid('s'), tekst: tekst.trim(), kupljeno:false });
+  persistShoppingList();
+}
+function quickAddToShoppingList(id){
+  const it = getItem(id);
+  if(!it) return;
+  addToShoppingList(it.naziv);
+  closeCardQuickMenu();
+  showBanner('Dodato na spisak za kupovinu.', 'info');
+}
+let shoppingCloseFn = null;
+function openShoppingList(){
+  renderShoppingList();
+  shoppingCloseFn = ()=>{ const el=document.getElementById('shoppingOverlayRoot'); if(el) el.remove(); shoppingCloseFn=null; };
+  pushOverlay(shoppingCloseFn);
+}
+function closeShoppingList(){
+  if(shoppingCloseFn){ closeOverlay(shoppingCloseFn); shoppingCloseFn = null; }
+}
+function renderShoppingList(){
+  let root = document.getElementById('shoppingOverlayRoot');
+  if(!root){ root = document.createElement('div'); root.id='shoppingOverlayRoot'; document.body.appendChild(root); }
+  const hasChecked = shoppingList.some(s=>s.kupljeno);
+  root.innerHTML = '<div class="chat-overlay">'+
+    '<div class="chat-header"><h2 class="serif">Spisak za kupovinu</h2>'+
+    (hasChecked ? '<button class="chat-close-btn" style="margin-right:6px;" onclick="clearBoughtItems()" title="Očisti kupljeno">🧹</button>' : '')+
+    '<button class="chat-close-btn" onclick="closeShoppingList()">✕</button></div>'+
+    '<div class="chat-messages" id="shoppingListEl">'+
+    (shoppingList.length===0 ? '<div class="chat-empty">Spisak je prazan. Dodaj nešto ispod, ili preko dugog pritiska na karticu leka.</div>' :
+      shoppingList.map(s=>
+        '<div style="display:flex; align-items:center; gap:10px; background:var(--bg-card); border:1px solid var(--line); border-radius:13px; padding:11px 13px;">'+
+        '<button onclick="toggleShoppingItem(\''+s.id+'\')" style="width:24px;height:24px;border-radius:7px;border:2px solid '+(s.kupljeno?'var(--green-deep)':'var(--line)')+';background:'+(s.kupljeno?'var(--green-deep)':'transparent')+';color:#fff;font-size:13px;flex:none;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">'+(s.kupljeno?'✓':'')+'</button>'+
+        '<span style="flex:1; font-size:14px;'+(s.kupljeno?'text-decoration:line-through;color:var(--text-dim);':'')+'">'+escapeHtml(s.tekst)+'</span>'+
+        '<button onclick="removeShoppingItem(\''+s.id+'\')" style="background:none;border:none;color:var(--coral);font-size:15px;cursor:pointer;flex:none;padding:4px;">✕</button>'+
+        '</div>'
+      ).join('')
+    )+
+    '</div>'+
+    '<div class="chat-input-row">'+
+    '<div class="entry-input-wrap"><input type="text" id="shoppingInput" placeholder="Dodaj na spisak..." onkeydown="if(event.key===\'Enter\') submitShoppingInput()"></div>'+
+    '<button class="send-btn" onclick="submitShoppingInput()">➤</button>'+
+    '</div></div>';
+}
+function submitShoppingInput(){
+  const el = document.getElementById('shoppingInput');
+  const val = el ? el.value.trim() : '';
+  if(!val) return;
+  if(el) el.value = '';
+  addToShoppingList(val);
+  renderShoppingList();
+  const el2 = document.getElementById('shoppingInput');
+  if(el2) el2.focus();
+}
+function toggleShoppingItem(id){
+  const s = shoppingList.find(x=>x.id===id);
+  if(s){ s.kupljeno = !s.kupljeno; persistShoppingList(); renderShoppingList(); }
+}
+function removeShoppingItem(id){
+  shoppingList = shoppingList.filter(x=>x.id!==id);
+  persistShoppingList();
+  renderShoppingList();
+}
+function clearBoughtItems(){
+  shoppingList = shoppingList.filter(x=>!x.kupljeno);
+  persistShoppingList();
+  renderShoppingList();
+}
+
 function sortItems(arr){
   const copy = arr.slice();
   if(settings.sortMode==='kategorija'){
@@ -396,7 +516,7 @@ function render(){
       filtered.map(it=>{
         const s = expiryStatus(it);
         const badgeClass = s.key==='ok' ? 'badge-ok' : s.key==='soon' ? 'badge-soon' : s.key==='expired' ? 'badge-expired' : 'badge-missing';
-        return '<div class="grid-card" id="item-'+it.id+'" onclick="openDetail(\''+it.id+'\')">'+
+        return '<div class="grid-card" id="item-'+it.id+'" onclick="handleCardClick(\''+it.id+'\')" onpointerdown="startCardLongPress(\''+it.id+'\')" onpointerup="cancelCardLongPress()" onpointerleave="cancelCardLongPress()" onpointercancel="cancelCardLongPress()">'+
           '<div class="med-thumb"'+(it.slika?' onclick="event.stopPropagation(); openPhotoFullScreen(\''+it.id+'\')"':'')+'>'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
           '<div class="gc-name">'+escapeHtml(it.naziv)+'</div>'+
           '<div class="gc-sub">'+[it.tip, it.kategorija].filter(Boolean).map(escapeHtml).join(' · ')+'</div>'+
@@ -409,7 +529,7 @@ function render(){
       filtered.map(it=>{
         const s = expiryStatus(it);
         const badgeClass = s.key==='ok' ? 'badge-ok' : s.key==='soon' ? 'badge-soon' : s.key==='expired' ? 'badge-expired' : 'badge-missing';
-        return '<div class="med-card" id="item-'+it.id+'" onclick="openDetail(\''+it.id+'\')">'+
+        return '<div class="med-card" id="item-'+it.id+'" onclick="handleCardClick(\''+it.id+'\')" onpointerdown="startCardLongPress(\''+it.id+'\')" onpointerup="cancelCardLongPress()" onpointerleave="cancelCardLongPress()" onpointercancel="cancelCardLongPress()">'+
           '<div class="med-thumb"'+(it.slika?' onclick="event.stopPropagation(); openPhotoFullScreen(\''+it.id+'\')"':'')+'>'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
           '<div class="med-info"><div class="med-name">'+escapeHtml(it.naziv)+'</div>'+
           '<div class="med-sub">'+[it.tip, it.kategorija].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div>'+
@@ -423,6 +543,7 @@ function render(){
     '<div class="topbar-row">'+
     '<div class="app-title serif">Kućna apoteka</div>'+
     '<button class="icon-btn" onclick="toggleViewMode()" title="Promeni prikaz">'+(settings.viewMode==='mreza'?'☰':'▦')+'</button>'+
+    '<button class="icon-btn" onclick="openShoppingList()" title="Spisak za kupovinu">🛒</button>'+
     '<button class="icon-btn" onclick="toggleSearch()">'+(searchOpen?'✕':'🔍')+'</button>'+
     '<button class="icon-btn" onclick="openSettings()">⚙</button>'+
     '</div>'+
@@ -527,6 +648,7 @@ function renderDetail(){
     )+
     '</div>'+
     '</div>'+
+    '<div style="padding:0 18px 12px;"><button class="save-btn" style="width:100%; padding:12px; border-radius:12px; font-size:13.5px;" onclick="quickAddToShoppingList(\''+it.id+'\')">🛒 Dodaj na spisak za kupovinu</button></div>'+
     '<div class="detail-actions">'+
     '<button class="cancel-btn" style="flex:1;padding:13px;border-radius:13px;border:none;font-weight:700;cursor:pointer;" onclick="openEditForm(\''+it.id+'\')">Izmeni</button>'+
     '<button class="delete-btn" style="flex:1;padding:13px;border-radius:13px;border:none;font-weight:700;cursor:pointer;" onclick="confirmDeleteItem(\''+it.id+'\')">Obriši</button>'+
@@ -1520,6 +1642,7 @@ function runDupYes(){ const fn=__dupYes; closeDuplicateWarning(); if(fn) fn(); }
 
 loadSettings();
 loadItems();
+loadShoppingList();
 render();
 
 if('serviceWorker' in navigator){
