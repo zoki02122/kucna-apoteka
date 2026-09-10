@@ -967,7 +967,7 @@ async function callGeminiForMedicineFromText(rawText){
     'VAŽNO: ne izmišljaj ništa što nije eksplicitno pomenuto u tekstu — ako nešto nije rečeno, vrati prazan string (ili null za rok).';
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(()=>controller.abort(), 20000);
+  const timeoutId = setTimeout(()=>controller.abort(), 30000);
   let resp;
   try{
     resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL+':generateContent', {
@@ -1295,10 +1295,22 @@ function closeCropScreen(){
   if(cropCloseFn){ closeOverlay(cropCloseFn); cropCloseFn = null; }
 }
 function skipCrop(){
-  const dataUrl = cropState ? cropState.dataUrl : null;
-  const purpose = cropState ? cropState.purpose : 'main';
+  if(!cropState){ closeCropScreen(); return; }
+  const { img, purpose } = cropState;
+  const maxDim = 1100;
+  let outW = img.naturalWidth, outH = img.naturalHeight;
+  if(outW > maxDim || outH > maxDim){
+    const ratio = Math.min(maxDim/outW, maxDim/outH);
+    outW = outW*ratio; outH = outH*ratio;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(outW));
+  canvas.height = Math.max(1, Math.round(outH));
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  const resizedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
   closeCropScreen();
-  if(dataUrl) handlePickedMedia(dataUrl, purpose);
+  handlePickedMedia(resizedDataUrl, purpose);
 }
 function confirmCrop(){
   if(!cropState) return;
@@ -1361,7 +1373,7 @@ async function callGeminiForMedicine(dataUrl){
     'VAZNO: nikad ne izmisljaj rok trajanja ako nije jasno citljiv - u tom slucaju vrati null za "rok". Ne izmisljaj ni ostala polja - ako nesto nije vidljivo, vrati prazan string.';
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(()=>controller.abort(), 20000);
+  const timeoutId = setTimeout(()=>controller.abort(), 30000);
   let resp;
   try{
     resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL+':generateContent', {
