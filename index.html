@@ -52,6 +52,8 @@
   .list-area{ padding:0 16px; }
   .section-label{ font-size:11px; font-weight:700; color:var(--text-dim); letter-spacing:0.2px; padding:4px 2px 8px; }
   .med-card{ display:flex; align-items:center; gap:12px; background:var(--bg-card); border:1px solid var(--line); border-radius:16px; padding:11px 13px; margin-bottom:9px; cursor:pointer; box-shadow:0 2px 4px rgba(43,43,36,0.07), 0 4px 12px rgba(43,43,36,0.08); }
+  .card-added{ animation:cardFlash 1.8s ease; }
+  @keyframes cardFlash{ 0%{ background:var(--amber-pale); } 100%{ background:var(--bg-card); } }
   .med-thumb{ width:52px; height:52px; border-radius:12px; background:var(--green-pale); display:flex; align-items:center; justify-content:center; font-size:22px; flex:none; overflow:hidden; }
   .med-thumb img{ width:100%; height:100%; object-fit:cover; }
   .med-info{ flex:1; min-width:0; }
@@ -394,7 +396,7 @@ function render(){
       filtered.map(it=>{
         const s = expiryStatus(it);
         const badgeClass = s.key==='ok' ? 'badge-ok' : s.key==='soon' ? 'badge-soon' : s.key==='expired' ? 'badge-expired' : 'badge-missing';
-        return '<div class="grid-card" onclick="openDetail(\''+it.id+'\')">'+
+        return '<div class="grid-card" id="item-'+it.id+'" onclick="openDetail(\''+it.id+'\')">'+
           '<div class="med-thumb"'+(it.slika?' onclick="event.stopPropagation(); openPhotoFullScreen(\''+it.id+'\')"':'')+'>'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
           '<div class="gc-name">'+escapeHtml(it.naziv)+'</div>'+
           '<div class="gc-sub">'+[it.tip, it.kategorija].filter(Boolean).map(escapeHtml).join(' · ')+'</div>'+
@@ -407,7 +409,7 @@ function render(){
       filtered.map(it=>{
         const s = expiryStatus(it);
         const badgeClass = s.key==='ok' ? 'badge-ok' : s.key==='soon' ? 'badge-soon' : s.key==='expired' ? 'badge-expired' : 'badge-missing';
-        return '<div class="med-card" onclick="openDetail(\''+it.id+'\')">'+
+        return '<div class="med-card" id="item-'+it.id+'" onclick="openDetail(\''+it.id+'\')">'+
           '<div class="med-thumb"'+(it.slika?' onclick="event.stopPropagation(); openPhotoFullScreen(\''+it.id+'\')"':'')+'>'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
           '<div class="med-info"><div class="med-name">'+escapeHtml(it.naziv)+'</div>'+
           '<div class="med-sub">'+[it.tip, it.kategorija].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div>'+
@@ -971,16 +973,28 @@ function saveItemForm(){
   doSaveItem(editId);
 }
 function doSaveItem(editId){
+  let newId = null;
   if(editId){
     const it = getItem(editId);
     Object.assign(it, formDraft);
   } else {
-    items.push(Object.assign({ id: uid('m') }, formDraft));
+    newId = uid('m');
+    items.push(Object.assign({ id: newId }, formDraft));
   }
   persistItems();
   render();
   closeItemForm();
   if(editId) renderDetail();
+  if(newId) scrollAndHighlightItem(newId);
+}
+function scrollAndHighlightItem(id){
+  setTimeout(()=>{
+    const el = document.getElementById('item-'+id);
+    if(!el) return;
+    el.scrollIntoView({ behavior:'smooth', block:'center' });
+    el.classList.add('card-added');
+    setTimeout(()=>{ el.classList.remove('card-added'); }, 1800);
+  }, 150);
 }
 
 /* ---------- ATTACH FOTOGRAFIJE + AI CITANJE ---------- */
