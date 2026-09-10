@@ -598,10 +598,7 @@ function knownCategories(){
   return out;
 }
 function openEditForm(id){
-  const oldFn = detailCloseFn;
-  detailCloseFn = null;
-  openDetailId = null;
-  openItemForm(id, oldFn);
+  openItemForm(id);
 }
 function quickAttachPhoto(){
   openItemForm(null);
@@ -982,13 +979,8 @@ function doSaveItem(editId){
   }
   persistItems();
   render();
-  if(editId){
-    const oldFn = formCloseFn;
-    formCloseFn = null;
-    openDetail(editId, oldFn);
-  } else {
-    closeItemForm();
-  }
+  closeItemForm();
+  if(editId) renderDetail();
 }
 
 /* ---------- ATTACH FOTOGRAFIJE + AI CITANJE ---------- */
