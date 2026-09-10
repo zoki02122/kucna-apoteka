@@ -24,9 +24,9 @@
   button, .med-card, .grid-card, .expiry-chip{ transition:transform 0.1s ease, opacity 0.1s ease; }
   button:active, .med-card:active, .grid-card:active, .expiry-chip:active{ transform:scale(0.96); opacity:0.85; }
   html,body{ margin:0; padding:0; min-height:100%; background:var(--bg); color:var(--text);
-    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; overscroll-behavior:none; }
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; overscroll-behavior:none; overflow-x:hidden; width:100%; }
   .serif{ font-family:"Fraunces","Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif; font-optical-sizing:auto; }
-  #app{ max-width:520px; margin:0 auto; padding:0 0 110px; min-height:100vh; position:relative; }
+  #app{ max-width:520px; margin:0 auto; padding:0 0 110px; min-height:100vh; position:relative; overflow-x:hidden; }
 
   /* ---- Topbar ---- */
   .topbar{ position:sticky; top:0; z-index:10; background:var(--bg); padding:16px 16px 8px; }
@@ -52,7 +52,7 @@
   /* ---- List ---- */
   .list-area{ padding:0 16px; }
   .section-label{ font-size:11px; font-weight:700; color:var(--text-dim); letter-spacing:0.2px; padding:4px 2px 8px; }
-  .group-header{ background:var(--green-pale); color:var(--green-deep); font-size:10px; font-weight:700; letter-spacing:0.3px; text-transform:uppercase; padding:5px 10px; border-radius:7px; margin:12px 0 7px; }
+  .group-header{ background:var(--green); color:#fff; font-size:10.5px; font-weight:700; letter-spacing:0.3px; text-transform:uppercase; padding:6px 11px; border-radius:8px; margin:12px 0 7px; }
   .med-card{ display:flex; align-items:center; gap:12px; background:var(--bg-card); border:1px solid var(--line); border-radius:16px; padding:11px 13px; margin-bottom:9px; cursor:pointer; box-shadow:0 2px 4px rgba(43,43,36,0.07), 0 4px 12px rgba(43,43,36,0.08); }
   .card-added{ animation:cardFlash 1.8s ease; }
   @keyframes cardFlash{ 0%{ background:var(--amber-pale); } 100%{ background:var(--bg-card); } }
