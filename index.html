@@ -305,7 +305,7 @@ function performUndo(){
 
 /* ---------- OVERLAY STACK (da dugme/gest "nazad" zatvara prozorčić umesto da napusti stranicu) ---------- */
 let overlayStack = [];
-let suppressNextPopstate = false;
+let suppressPopstateCount = 0;
 function pushOverlay(removeFn){
   overlayStack.push(removeFn);
   try{ history.pushState({ovl:true}, '', location.href); }catch(e){}
@@ -314,8 +314,8 @@ function closeOverlay(removeFn){
   const idx = overlayStack.lastIndexOf(removeFn);
   if(idx!==-1) overlayStack.splice(idx,1);
   removeFn();
-  suppressNextPopstate = true;
-  try{ history.back(); }catch(e){}
+  suppressPopstateCount++;
+  try{ history.back(); }catch(e){ suppressPopstateCount--; }
 }
 function swapOverlay(oldRemoveFn, newRemoveFn){
   // zamenjuje jedan otvoren prozorcic drugim na ISTOM nivou, bez diranja istorije uopste -
@@ -326,7 +326,7 @@ function swapOverlay(oldRemoveFn, newRemoveFn){
   overlayStack.push(newRemoveFn);
 }
 window.addEventListener('popstate', function(){
-  if(suppressNextPopstate){ suppressNextPopstate = false; return; }
+  if(suppressPopstateCount>0){ suppressPopstateCount--; return; }
   const fn = overlayStack.pop();
   if(fn) fn();
 });
@@ -496,7 +496,7 @@ function render(){
   const app = document.getElementById('app');
   const qWords = searchQuery.trim().split(/\s+/).filter(Boolean).map(normalizeSearchWord);
   const filtered = sortItems(qWords.length ? items.filter(it=>{
-    const haystack = foldDiacritics([it.naziv, it.tip, it.kategorija, it.napomena, it.doziranje].filter(Boolean).join(' '));
+    const haystack = foldDiacritics([it.naziv, it.tip, it.kategorija, it.napomena, it.doziranje, it.prosireno].filter(Boolean).join(' '));
     return qWords.every(w => haystack.includes(w));
   }) : items);
 
@@ -837,7 +837,7 @@ function applyChatActions(msgIdx){
       } else if(act.tip==='obrisi'){
         items = items.filter(i=>i.id!==act.stavka_id);
       } else if(act.tip==='dodaj'){
-        items.push(Object.assign({ id: uid('m'), tip:'', kategorija:'', doziranje:'', napomena:'', rok:'', slika:null, ikonica:'💊' }, act.polja||{}));
+        items.push(Object.assign({ id: uid('m'), tip:'', kategorija:'', doziranje:'', napomena:'', rok:'', slika:null, ikonica:'💊', prosireno:'' }, act.polja||{}));
       }
     }catch(err){}
   });
