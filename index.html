@@ -33,6 +33,7 @@
   .topbar-row{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
   .app-title{ flex:1; font-size:21px; font-weight:600; color:var(--green-deep); letter-spacing:0.2px; }
   .icon-btn{ width:38px; height:38px; border-radius:11px; background:var(--bg-card); border:1px solid var(--line); color:var(--green-deep); font-size:15px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none; box-shadow:0 1px 2px rgba(43,43,36,0.05); }
+  .cart-dot{ position:absolute; top:5px; right:5px; width:9px; height:9px; border-radius:50%; background:var(--coral); border:2px solid var(--bg-card); }
   .search-wrap{ display:flex; align-items:center; background:var(--bg-card); border:1px solid var(--line); border-radius:12px; padding:0 4px 0 13px; box-shadow:0 1px 2px rgba(43,43,36,0.05); }
   .search-wrap input{ flex:1; border:none; background:transparent; padding:10px 8px; font-size:14px; color:var(--text); font-family:inherit; }
   .search-wrap input::placeholder{ color:var(--text-dim); }
@@ -51,6 +52,8 @@
   /* ---- List ---- */
   .list-area{ padding:0 16px; }
   .section-label{ font-size:11px; font-weight:700; color:var(--text-dim); letter-spacing:0.2px; padding:4px 2px 8px; }
+  .group-header{ font-size:11px; font-weight:700; color:var(--green-deep); letter-spacing:0.4px; text-transform:uppercase; margin:14px 2px 8px; padding-bottom:5px; border-bottom:1px solid var(--line); }
+  .grid-group-header{ grid-column:1 / -1; font-size:11px; font-weight:700; color:var(--green-deep); letter-spacing:0.4px; text-transform:uppercase; margin:10px 2px 2px; padding-bottom:5px; border-bottom:1px solid var(--line); }
   .med-card{ display:flex; align-items:center; gap:12px; background:var(--bg-card); border:1px solid var(--line); border-radius:16px; padding:11px 13px; margin-bottom:9px; cursor:pointer; box-shadow:0 2px 4px rgba(43,43,36,0.07), 0 4px 12px rgba(43,43,36,0.08); }
   .card-added{ animation:cardFlash 1.8s ease; }
   @keyframes cardFlash{ 0%{ background:var(--amber-pale); } 100%{ background:var(--bg-card); } }
@@ -229,6 +232,15 @@ function stemWord(w){
 }
 function normalizeSearchWord(w){ return stemWord(foldDiacritics(w)); }
 function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function displayNaziv(naziv){
+  if(!naziv) return '';
+  return naziv.split(' ').map(word=>{
+    if(word.length>1 && /[A-ZČĆŽŠĐ]/.test(word) && word===word.toUpperCase() && word!==word.toLowerCase()){
+      return word.charAt(0)+word.slice(1).toLowerCase();
+    }
+    return word;
+  }).join(' ');
+}
 function uid(p){ return p+Date.now()+Math.random().toString(36).slice(2,6); }
 
 /* ---------- PERSISTENCE (localStorage) ---------- */
@@ -354,7 +366,7 @@ function openCardQuickMenu(id){
   const b = document.createElement('div'); b.className='modal-backdrop small-modal'; b.id='cardMenuBackdrop';
   b.innerHTML = '<div class="modal" style="border-radius:20px;">'+
     '<button class="modal-close-x" onclick="closeCardQuickMenu()">✕</button>'+
-    '<h2 class="serif" style="font-size:16px; padding-right:30px;">'+escapeHtml(it.naziv)+'</h2>'+
+    '<h2 class="serif" style="font-size:16px; padding-right:30px;">'+escapeHtml(displayNaziv(it.naziv))+'</h2>'+
     '<div style="display:flex; flex-direction:column; gap:9px; margin-top:4px;">'+
     '<button class="cancel-btn" style="text-align:left; padding:13px 14px; border-radius:12px; font-weight:700; font-size:14px;" onclick="quickAddToShoppingList(\''+it.id+'\')">🛒 Dodaj na spisak za kupovinu</button>'+
     '<button class="delete-btn" style="text-align:left; padding:13px 14px; border-radius:12px; font-weight:700; font-size:14px;" onclick="quickDeleteFromMenu(\''+it.id+'\')">🗑 Obriši</button>'+
@@ -509,36 +521,49 @@ function render(){
     expiring.map(it=>{
       const s = expiryStatus(it);
       return '<div class="expiry-chip '+(s.key==='expired'?'expired':'')+'" onclick="openDetail(\''+it.id+'\')">'+
-        '<span class="en">'+escapeHtml(it.naziv)+'</span><span class="ed">'+s.label+'</span></div>';
+        '<span class="en">'+escapeHtml(displayNaziv(it.naziv))+'</span><span class="ed">'+s.label+'</span></div>';
     }).join('')+
     '</div></div>'
   ) : '';
 
   let listHtml;
+  function groupKeyForSort(it){
+    if(settings.sortMode==='kategorija') return (it.kategorija && it.kategorija.trim()) || 'Bez kategorije';
+    if(settings.sortMode==='tip') return (it.tip && it.tip.trim()) || 'Bez tipa';
+    return null;
+  }
   if(filtered.length===0){
     listHtml = '<div class="empty">'+(qWords.length ? 'Nema stavki koje odgovaraju pretrazi "'+escapeHtml(searchQuery)+'".' : 'Kućna apoteka je prazna.<br>Dodaj prvi lek ili suplement dugmetom ispod.')+'</div>';
   } else if(settings.viewMode==='mreza'){
+    let lastGroup = null;
     listHtml = '<div class="section-label">Sve stavke ('+filtered.length+')</div>'+
       '<div class="grid-list">'+
       filtered.map(it=>{
         const s = expiryStatus(it);
         const badgeClass = s.key==='ok' ? 'badge-ok' : s.key==='soon' ? 'badge-soon' : s.key==='expired' ? 'badge-expired' : 'badge-missing';
-        return '<div class="grid-card" id="item-'+it.id+'" onclick="handleCardClick(\''+it.id+'\')" onpointerdown="startCardLongPress(\''+it.id+'\')" onpointerup="cancelCardLongPress()" onpointerleave="cancelCardLongPress()" onpointercancel="cancelCardLongPress()">'+
+        const gk = groupKeyForSort(it);
+        let headerHtml = '';
+        if(gk!==null && gk!==lastGroup){ headerHtml = '<div class="grid-group-header">'+escapeHtml(gk)+'</div>'; lastGroup = gk; }
+        return headerHtml+'<div class="grid-card" id="item-'+it.id+'" onclick="handleCardClick(\''+it.id+'\')" onpointerdown="startCardLongPress(\''+it.id+'\')" onpointerup="cancelCardLongPress()" onpointerleave="cancelCardLongPress()" onpointercancel="cancelCardLongPress()">'+
           '<div class="med-thumb"'+(it.slika?' onclick="event.stopPropagation(); openPhotoFullScreen(\''+it.id+'\')"':'')+'>'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
-          '<div class="gc-name">'+escapeHtml(it.naziv)+'</div>'+
+          '<div class="gc-name">'+escapeHtml(displayNaziv(it.naziv))+'</div>'+
           '<div class="gc-sub">'+[it.tip, it.kategorija].filter(Boolean).map(escapeHtml).join(' · ')+'</div>'+
           '<div class="med-badge gc-badge '+badgeClass+'">'+s.label+'</div>'+
           '</div>';
       }).join('')+
       '</div>';
   } else {
+    let lastGroup = null;
     listHtml = '<div class="section-label">Sve stavke ('+filtered.length+')</div>' +
       filtered.map(it=>{
         const s = expiryStatus(it);
         const badgeClass = s.key==='ok' ? 'badge-ok' : s.key==='soon' ? 'badge-soon' : s.key==='expired' ? 'badge-expired' : 'badge-missing';
-        return '<div class="med-card" id="item-'+it.id+'" onclick="handleCardClick(\''+it.id+'\')" onpointerdown="startCardLongPress(\''+it.id+'\')" onpointerup="cancelCardLongPress()" onpointerleave="cancelCardLongPress()" onpointercancel="cancelCardLongPress()">'+
+        const gk = groupKeyForSort(it);
+        let headerHtml = '';
+        if(gk!==null && gk!==lastGroup){ headerHtml = '<div class="group-header">'+escapeHtml(gk)+'</div>'; lastGroup = gk; }
+        return headerHtml+'<div class="med-card" id="item-'+it.id+'" onclick="handleCardClick(\''+it.id+'\')" onpointerdown="startCardLongPress(\''+it.id+'\')" onpointerup="cancelCardLongPress()" onpointerleave="cancelCardLongPress()" onpointercancel="cancelCardLongPress()">'+
           '<div class="med-thumb"'+(it.slika?' onclick="event.stopPropagation(); openPhotoFullScreen(\''+it.id+'\')"':'')+'>'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
-          '<div class="med-info"><div class="med-name">'+escapeHtml(it.naziv)+'</div>'+
+          '<div class="med-info"><div class="med-name">'+escapeHtml(displayNaziv(it.naziv))+'</div>'+
           '<div class="med-sub">'+[it.tip, it.kategorija].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div>'+
           '<div class="med-badge '+badgeClass+'">'+s.label+'</div>'+
           '</div>';
@@ -550,7 +575,7 @@ function render(){
     '<div class="topbar-row">'+
     '<div class="app-title serif">Kućna apoteka</div>'+
     '<button class="icon-btn" onclick="toggleViewMode()" title="Promeni prikaz">'+(settings.viewMode==='mreza'?'☰':'▦')+'</button>'+
-    '<button class="icon-btn" onclick="openShoppingList()" title="Spisak za kupovinu">🛒</button>'+
+    '<button class="icon-btn" style="position:relative;" onclick="openShoppingList()" title="Spisak za kupovinu">🛒'+(shoppingList.some(s=>!s.kupljeno)?'<span class="cart-dot"></span>':'')+'</button>'+
     '<button class="icon-btn" onclick="toggleSearch()">'+(searchOpen?'✕':'🔍')+'</button>'+
     '<button class="icon-btn" onclick="openSettings()">⚙</button>'+
     '</div>'+
@@ -631,7 +656,7 @@ function renderDetail(){
     '<button class="modal-close-x" onclick="closeDetail()">✕</button>'+
     '<div class="detail-hero">'+
     '<div class="detail-thumb" onclick="'+(it.slika?'openPhotoFullScreen()':'')+'">'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
-    '<div><div class="detail-title serif">'+escapeHtml(it.naziv)+'</div>'+
+    '<div><div class="detail-title serif">'+escapeHtml(displayNaziv(it.naziv))+'</div>'+
     '<div class="detail-type">'+escapeHtml(it.tip||'')+'</div></div>'+
     '</div>'+
     '<div class="detail-body">'+
@@ -685,7 +710,7 @@ function openExpandedInfo(id){
     '<button class="modal-close-x" onclick="closeExpandedInfo()">✕</button>'+
     '<div class="detail-hero">'+
     '<div class="detail-thumb">'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
-    '<div><div class="detail-title serif">'+escapeHtml(it.naziv)+'</div>'+
+    '<div><div class="detail-title serif">'+escapeHtml(displayNaziv(it.naziv))+'</div>'+
     '<div class="detail-type">Prošireno uputstvo</div></div>'+
     '</div>'+
     '<div class="detail-body">'+
@@ -849,7 +874,7 @@ function renderChatOverlay(){
           return '<div class="chat-item-refs">'+refs.map(it=>
             '<div class="chat-item-chip" onclick="openItemFromChat(\''+it.id+'\')">'+
             '<span class="cic-icon">'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</span>'+
-            '<span class="cic-name">'+escapeHtml(it.naziv)+'</span>'+
+            '<span class="cic-name">'+escapeHtml(displayNaziv(it.naziv))+'</span>'+
             '<span class="cic-arrow">›</span>'+
             '</div>'
           ).join('')+'</div>';
