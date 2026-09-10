@@ -150,7 +150,12 @@
   .chat-bubble.ai{ align-self:flex-start; background:var(--bg-elevated); border:1px solid var(--line); color:var(--text); border-bottom-left-radius:4px; }
   .chat-bubble.thinking{ color:var(--text-dim); font-style:italic; }
   .chat-bubble strong{ color:var(--amber); }
-  .chat-link{ color:var(--green-deep); font-weight:700; text-decoration:underline; text-decoration-color:var(--green); cursor:pointer; }
+  .chat-item-refs{ display:flex; flex-direction:column; gap:7px; margin-top:6px; max-width:88%; }
+  .chat-item-chip{ display:flex; align-items:center; gap:10px; background:var(--bg-card); border:1px solid var(--line); border-radius:13px; padding:10px 12px; cursor:pointer; box-shadow:0 1px 3px rgba(43,43,36,0.07); }
+  .chat-item-chip .cic-icon{ font-size:19px; width:30px; height:30px; border-radius:8px; background:var(--green-pale); display:flex; align-items:center; justify-content:center; flex:none; overflow:hidden; }
+  .chat-item-chip .cic-icon img{ width:100%; height:100%; object-fit:cover; }
+  .chat-item-chip .cic-name{ font-size:13.5px; font-weight:600; color:var(--text); flex:1; }
+  .chat-item-chip .cic-arrow{ color:var(--green-deep); font-size:15px; flex:none; }
   .chat-action-card{ align-self:flex-start; max-width:90%; background:var(--amber-pale); border:1px solid #E0C9A8; border-radius:14px; padding:11px 13px; margin-top:-2px; }
   .chat-action-title{ font-size:11px; font-weight:700; color:var(--amber); text-transform:uppercase; letter-spacing:0.3px; margin-bottom:5px; }
   .chat-action-card ul{ margin:0; padding-left:18px; font-size:12.5px; }
@@ -763,10 +768,20 @@ function escapeChatText(text){
   });
   if(inList) html += '</ul>';
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/\{\{([\w-]+):(.*?)\}\}/g, (m, id, naziv)=>{
-    return getItem(id) ? '<span class="chat-link" onclick="openItemFromChat(\''+id+'\')">'+naziv+'</span>' : naziv;
-  });
+  html = html.replace(/\{\{([\w-]+):(.*?)\}\}/g, (m, id, naziv)=> naziv);
   return html || escaped;
+}
+function extractChatItemRefs(text){
+  const refs = []; const seen = new Set();
+  const re = /\{\{([\w-]+):(.*?)\}\}/g;
+  let m;
+  while((m = re.exec(text))){
+    const id = m[1];
+    if(seen.has(id)) continue;
+    const it = getItem(id);
+    if(it){ seen.add(id); refs.push(it); }
+  }
+  return refs;
 }
 function parseChatAction(raw){
   const marker = /###AKCIJA###([\s\S]*?)###KRAJ###/;
@@ -828,6 +843,17 @@ function renderChatOverlay(){
     (chatMessages.length===0 ? '<div class="chat-empty">Pitaj bilo šta o tvojoj kućnoj apoteci — npr. "Šta imam za glavobolju?", "Šta mi ističe uskoro?", "Koliko vitamina imam?"</div>' :
       chatMessages.map((m,idx)=>
         '<div class="chat-bubble '+m.role+(m.thinking?' thinking':'')+'">'+(m.role==='ai' && !m.thinking ? escapeChatText(m.text) : escapeHtml(m.text))+'</div>'+
+        (m.role==='ai' && !m.thinking ? (()=>{
+          const refs = extractChatItemRefs(m.text);
+          if(refs.length===0) return '';
+          return '<div class="chat-item-refs">'+refs.map(it=>
+            '<div class="chat-item-chip" onclick="openItemFromChat(\''+it.id+'\')">'+
+            '<span class="cic-icon">'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</span>'+
+            '<span class="cic-name">'+escapeHtml(it.naziv)+'</span>'+
+            '<span class="cic-arrow">›</span>'+
+            '</div>'
+          ).join('')+'</div>';
+        })() : '')+
         (m.actions && m.actionStatus==='pending' ?
           '<div class="chat-action-card"><div class="chat-action-title">AI predlaže</div>'+
           '<ul>'+m.actions.map(act=>'<li>'+escapeHtml(describeChatAction(act))+'</li>').join('')+'</ul>'+
