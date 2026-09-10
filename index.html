@@ -1025,11 +1025,13 @@ function pickPhotoFor(kind, purpose){
     const isPdf = f.type === 'application/pdf';
     const reader = new FileReader();
     reader.onload = (e)=>{
-      closeFormAttachMenu();
       if(isPdf){
+        closeFormAttachMenu();
         handlePickedMedia(e.target.result, purpose);
       } else {
-        openCropScreen(e.target.result, purpose);
+        const oldFn = attachCloseFn;
+        attachCloseFn = null;
+        openCropScreen(e.target.result, purpose, oldFn);
       }
     };
     reader.readAsDataURL(f);
@@ -1055,12 +1057,12 @@ function removeFromLeafletQueue(idx){
 /* ---------- RUČNO OPSECANJE FOTOGRAFIJE ---------- */
 let cropState = null;
 let cropCloseFn = null;
-function openCropScreen(dataUrl, purpose){
+function openCropScreen(dataUrl, purpose, swapFromFn){
   const img = new Image();
-  img.onload = ()=>{ buildCropScreen(dataUrl, img, purpose); };
+  img.onload = ()=>{ buildCropScreen(dataUrl, img, purpose, swapFromFn); };
   img.src = dataUrl;
 }
-function buildCropScreen(dataUrl, imgEl, purpose){
+function buildCropScreen(dataUrl, imgEl, purpose, swapFromFn){
   const stageMaxW = Math.min(window.innerWidth - 32, 480);
   const stageMaxH = window.innerHeight * 0.6;
   const fitScale = Math.min(1, stageMaxW / imgEl.naturalWidth, stageMaxH / imgEl.naturalHeight);
@@ -1100,7 +1102,8 @@ function buildCropScreen(dataUrl, imgEl, purpose){
     cropState = null;
     cropCloseFn = null;
   };
-  pushOverlay(cropCloseFn);
+  if(swapFromFn){ swapOverlay(swapFromFn, cropCloseFn); }
+  else { pushOverlay(cropCloseFn); }
 }
 function updateCropBoxStyle(){
   const el = document.getElementById('cropBox');
