@@ -362,8 +362,9 @@ function closeCardQuickMenu(){
   if(cardMenuCloseFn){ closeOverlay(cardMenuCloseFn); cardMenuCloseFn = null; }
 }
 function quickDeleteFromMenu(id){
-  closeCardQuickMenu();
-  confirmDeleteItem(id);
+  const oldFn = cardMenuCloseFn;
+  cardMenuCloseFn = null;
+  confirmDeleteItem(id, oldFn);
 }
 
 /* ---------- SPISAK ZA KUPOVINU ---------- */
@@ -692,7 +693,7 @@ function openExpandedInfo(id){
 function closeExpandedInfo(){
   if(expandedInfoCloseFn){ closeOverlay(expandedInfoCloseFn); expandedInfoCloseFn = null; }
 }
-function confirmDeleteItem(id){
+function confirmDeleteItem(id, swapFromFn){
   showConfirm('Obrisati ovu stavku iz kućne apoteke?', ()=>{
     const it = getItem(id);
     if(it) lastDeletedItem = JSON.parse(JSON.stringify(it));
@@ -701,7 +702,7 @@ function confirmDeleteItem(id){
     closeDetail();
     render();
     if(it) showUndoToast('Stavka "'+it.naziv+'" obrisana.');
-  });
+  }, null, swapFromFn);
 }
 
 /* ---------- ADD / EDIT FORM (draft-based, da ne izgubi unos pri osvezavanju zbog fotografije) ---------- */
@@ -1596,7 +1597,7 @@ function saveSettings(){
 /* ---------- CONFIRM ---------- */
 let __confirmYes = null;
 let confirmCloseFn = null;
-function showConfirm(msg, onYes, yesLabel){
+function showConfirm(msg, onYes, yesLabel, swapFromFn){
   __confirmYes = onYes;
   const b = document.createElement('div'); b.className='modal-backdrop'; b.id='confirmBackdrop';
   b.innerHTML = '<div class="modal" style="border-radius:22px;">'+
@@ -1607,7 +1608,8 @@ function showConfirm(msg, onYes, yesLabel){
   document.body.appendChild(b);
   b.addEventListener('click',(e)=>{ if(e.target===b) closeConfirm(); });
   confirmCloseFn = ()=>{ const bb=document.getElementById('confirmBackdrop'); if(bb) bb.remove(); __confirmYes=null; confirmCloseFn=null; };
-  pushOverlay(confirmCloseFn);
+  if(swapFromFn){ swapOverlay(swapFromFn, confirmCloseFn); }
+  else { pushOverlay(confirmCloseFn); }
 }
 function closeConfirm(){
   if(confirmCloseFn){ closeOverlay(confirmCloseFn); confirmCloseFn = null; }
