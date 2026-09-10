@@ -1639,6 +1639,7 @@ function openSettings(){
   b.innerHTML = '<div class="modal">'+
     '<button class="modal-close-x" onclick="closeSettings()">✕</button>'+
     '<h2 class="serif">Podešavanja</h2>'+
+    '<button class="save-btn" style="width:100%; padding:12px; border-radius:12px; font-size:13.5px; margin-bottom:18px;" onclick="openHelpScreen()">📖 Uputstvo za korišćenje</button>'+
     '<div class="field"><label>Upozori me koliko dana pre isteka roka</label>'+
     '<input id="sThreshold" type="number" min="1" max="365" value="'+settings.expiryThresholdDays+'"></div>'+
     '<div class="field-hint" style="margin-bottom:18px;">Lekovi i suplementi čiji rok ističe unutar ovog broja dana pojaviće se u traci "Ističe uskoro" na početnom ekranu.</div>'+
@@ -1656,6 +1657,34 @@ function openSettings(){
 }
 function closeSettings(){
   if(settingsCloseFn){ closeOverlay(settingsCloseFn); settingsCloseFn = null; }
+}
+let helpCloseFn = null;
+function openHelpScreen(){
+  const b = document.createElement('div'); b.className='modal-backdrop top'; b.id='helpBackdrop';
+  const sections = [
+    { t:'Dodavanje leka', c:'Dole na dugme "+" slikaj pakovanje (ili izaberi iz galerije) — AI pročita naziv, dozu i rok. Ili ukucaj/izgovori naziv u polje za tekst i pritisni ➤ — AI će sam rasporediti podatke po poljima. Fotografiju možeš i da opsečeš pre slanja, ili da preskočiš opsecanje.' },
+    { t:'Skeniranje uputstva', c:'U formi za dodavanje/izmenu, dugme "Skeniraj uputstvo za upotrebu" čita papirić iz kutije (ili PDF) — popunjava način upotrebe, napomene, rok i detaljnije informacije. Ne čuva se kao slika stavke, samo se pročita.' },
+    { t:'Šta ističe uskoro', c:'Traka na vrhu odmah pokazuje šta ističe uskoro ili je već isteklo. Koliko dana unapred te upozorava podešava se u ovom istom meniju (Podešavanja).' },
+    { t:'Pretraga i sortiranje', c:'🔍 lupa pretražuje naziv, tip, kategoriju i napomenu — ignoriše veliko/malo slovo i kvačice. Dugmad Naziv / Kategorija / Tip / Rok sortiraju listu; kod Kategorije i Tipa se pojave i grupni naslovi.' },
+    { t:'Prikaz liste', c:'Ikonica ▦/☰ menja prikaz između liste (detaljnije) i mreže (kompaktnije, dve kolone). Klik na sliku leka otvara je preko celog ekrana; klik na ostatak kartice otvara detalje.' },
+    { t:'AI ćaskanje', c:'💬 ikonica dole levo — postavi pitanje o svojoj apoteci ("Šta imam za glavobolju?", "Šta mi ističe?"). AI može i da predloži izmenu ili brisanje, ali ništa se ne menja dok sam ne potvrdiš.' },
+    { t:'Spisak za kupovinu', c:'🛒 ikonica gore otvara spisak — može da se doda bilo šta, čak i ono čega još nema u apoteci. Kvačica označava kupljeno, "🧹 Očisti kupljeno" briše sve kupljeno odjednom.' },
+    { t:'Brzi meni', c:'Dug pritisak (drži prst) na kartici leka otvara brzi meni — dodaj na spisak za kupovinu ili obriši, bez da prvo ulaziš u detalje.' },
+    { t:'Ako pogrešiš', c:'Brisanje stavke uvek nudi "Poništi" na par sekundi posle brisanja — ako pogrešiš, odmah se vraća.' }
+  ];
+  b.innerHTML = '<div class="modal full">'+
+    '<button class="modal-close-x" onclick="closeHelpScreen()">✕</button>'+
+    '<div class="detail-body" style="padding-top:60px;">'+
+    '<h2 class="serif" style="margin-bottom:6px;">📖 Uputstvo za korišćenje</h2>'+
+    '<div class="field-hint" style="margin-bottom:18px;">Kratak pregled svega što aplikacija ume.</div>'+
+    sections.map(s=>'<div class="detail-field"><div class="detail-field-label">'+escapeHtml(s.t.toUpperCase())+'</div><div class="detail-field-value">'+escapeHtml(s.c)+'</div></div>').join('')+
+    '</div></div>';
+  document.body.appendChild(b);
+  helpCloseFn = ()=>{ const bb=document.getElementById('helpBackdrop'); if(bb) bb.remove(); helpCloseFn=null; };
+  pushOverlay(helpCloseFn);
+}
+function closeHelpScreen(){
+  if(helpCloseFn){ closeOverlay(helpCloseFn); helpCloseFn = null; }
 }
 function saveSettings(){
   const v = parseInt(document.getElementById('sThreshold').value)||60;
