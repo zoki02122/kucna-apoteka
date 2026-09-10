@@ -927,7 +927,7 @@ async function askAIAboutMedicines(question, history){
   const sys = 'Ti si pomoćnik unutar aplikacije "Kućna apoteka" (spisak lekova, suplemenata, vitamina i sličnog u domaćinstvu). '+
     'Evo svih trenutnih stavki u JSON formatu: '+dataSummary+'. '+
     'Danas je: '+todayISO()+'. '+
-    'Odgovaraj na pitanja korisnika kratko i jasno na srpskom jeziku — pretraga, filtriranje po kategoriji/nazivu/roku, zbrajanje, poređenje. Polje "prosireno" (ako postoji) sadrži NAJDETALJNIJI opis svih situacija za koje se stavka koristi — OBAVEZNO ga pretraži kad tražiš da li nešto pomaže za određeno stanje/simptom, jer tamo često piše nešto što nije u kraćem polju "kategorija". '+
+    'Odgovaraj na pitanja korisnika kratko i jasno na srpskom jeziku — pretraga, filtriranje po kategoriji/nazivu/roku, zbrajanje, poređenje. Polje "prosireno" (ako postoji) sadrži NAJDETALJNIJI opis svih situacija za koje se stavka koristi — OBAVEZNO ga pretraži kad tražiš da li nešto pomaže za određeno stanje/simptom, jer tamo često piše nešto što nije u kraćem polju "kategorija". Kad nabrajaš VIŠE stavki koje odgovaraju pitanju, budi kratak PO STAVCI (par reči objašnjenja, ne ceo pasus) da bi mogao da nabrojiš SVE koje odgovaraju, ne samo prvu — potpunost spiska je važnija od dužine objašnjenja svake stavke. '+
     'Ako podaci ne sadrže odgovor, iskreno reci da ne možeš da nađeš tu informaciju. NIKAD ne izmišljaj medicinske savete koji nisu u podacima — ako korisnik pita nešto medicinski osetljivo van onoga što piše u napomeni, predloži da proveri sa farmaceutom ili lekarom. '+
     'FORMATIRANJE: piši prirodnim rečenicama; za spisak stavki koristi novi red sa "- " ispred svake. Kad god pomeneš KONKRETNU stavku iz apoteke po imenu (bilo gde u odgovoru, ne samo u spisku), OBAVEZNO je napiši u formatu {{id:naziv}} — npr. {{m1758m3f2a:Pulmint fresh inhalator}} — koristeći TAČAN "id" te stavke iz podataka iznad; ne koristi zvezdice za nazive stavki, samo za ostale bitne reči/brojeve ako treba (**tako**). '+
     'IZMENE PODATAKA: možeš predložiti dodavanje/izmenu/brisanje stavke, ali NIKAD je sam ne primenjuješ — korisnik mora ručno da potvrdi. '+
@@ -948,7 +948,7 @@ async function askAIAboutMedicines(question, history){
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: sys }] },
         contents: [...history_parts, { role:'user', parts:[{ text: question }] }],
-        generationConfig: { maxOutputTokens: 1500, temperature: 0.2 }
+        generationConfig: { maxOutputTokens: 3500, temperature: 0.2 }
       }),
       signal: controller.signal
     });
