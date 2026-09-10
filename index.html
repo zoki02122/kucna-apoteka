@@ -150,6 +150,7 @@
   .chat-bubble.ai{ align-self:flex-start; background:var(--bg-elevated); border:1px solid var(--line); color:var(--text); border-bottom-left-radius:4px; }
   .chat-bubble.thinking{ color:var(--text-dim); font-style:italic; }
   .chat-bubble strong{ color:var(--amber); }
+  .chat-link{ color:var(--green-deep); font-weight:700; text-decoration:underline; text-decoration-color:var(--green); cursor:pointer; }
   .chat-action-card{ align-self:flex-start; max-width:90%; background:var(--amber-pale); border:1px solid #E0C9A8; border-radius:14px; padding:11px 13px; margin-top:-2px; }
   .chat-action-title{ font-size:11px; font-weight:700; color:var(--amber); text-transform:uppercase; letter-spacing:0.3px; margin-bottom:5px; }
   .chat-action-card ul{ margin:0; padding-left:18px; font-size:12.5px; }
@@ -741,6 +742,12 @@ function openChatMode(){
 function closeChatMode(){
   if(chatCloseFn){ closeOverlay(chatCloseFn); chatCloseFn = null; }
 }
+function openItemFromChat(id){
+  if(!getItem(id)) return;
+  const oldFn = chatCloseFn;
+  chatCloseFn = null;
+  openDetail(id, oldFn);
+}
 function escapeChatText(text){
   const escaped = escapeHtml(text);
   const lines = escaped.split('\n');
@@ -758,6 +765,9 @@ function escapeChatText(text){
   });
   if(inList) html += '</ul>';
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\{\{([\w-]+):(.*?)\}\}/g, (m, id, naziv)=>{
+    return getItem(id) ? '<span class="chat-link" onclick="openItemFromChat(\''+id+'\')">'+naziv+'</span>' : naziv;
+  });
   return html || escaped;
 }
 function parseChatAction(raw){
@@ -875,7 +885,7 @@ async function askAIAboutMedicines(question, history){
     'Danas je: '+todayISO()+'. '+
     'Odgovaraj na pitanja korisnika kratko i jasno na srpskom jeziku — pretraga, filtriranje po kategoriji/nazivu/roku, zbrajanje, poređenje. '+
     'Ako podaci ne sadrže odgovor, iskreno reci da ne možeš da nađeš tu informaciju. NIKAD ne izmišljaj medicinske savete koji nisu u podacima — ako korisnik pita nešto medicinski osetljivo van onoga što piše u napomeni, predloži da proveri sa farmaceutom ili lekarom. '+
-    'FORMATIRANJE: piši prirodnim rečenicama; za spisak stavki koristi novi red sa "- " ispred svake; ključne brojeve/nazive podebljaj sa **dvostrukim zvezdicama**. '+
+    'FORMATIRANJE: piši prirodnim rečenicama; za spisak stavki koristi novi red sa "- " ispred svake. Kad god pomeneš KONKRETNU stavku iz apoteke po imenu (bilo gde u odgovoru, ne samo u spisku), OBAVEZNO je napiši u formatu {{id:naziv}} — npr. {{m1758m3f2a:Pulmint fresh inhalator}} — koristeći TAČAN "id" te stavke iz podataka iznad; ne koristi zvezdice za nazive stavki, samo za ostale bitne reči/brojeve ako treba (**tako**). '+
     'IZMENE PODATAKA: možeš predložiti dodavanje/izmenu/brisanje stavke, ali NIKAD je sam ne primenjuješ — korisnik mora ručno da potvrdi. '+
     'Kad predlažeš izmenu, na SAMOM KRAJU odgovora dodaj tačno ovaj blok, bez ičeg posle:\n'+
     '###AKCIJA###\n[{"tip":"izmeni","stavka_id":"...","polja":{"kategorija":"nova vrednost"}}]\n###KRAJ###\n'+
