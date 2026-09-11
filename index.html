@@ -51,8 +51,8 @@
 
   /* ---- List ---- */
   .list-area{ padding:0 16px; }
-  .section-label{ font-size:11px; font-weight:700; color:var(--text-dim); letter-spacing:0.2px; padding:4px 2px 8px; }
-  .group-header{ background:#C9DECD; color:var(--green-deep); font-size:10.5px; font-weight:700; letter-spacing:0.3px; text-transform:uppercase; padding:6px 11px; border-radius:8px; margin:12px 0 7px; }
+  .section-label{ font-size:11px; font-weight:700; color:var(--text-dim); letter-spacing:0.2px; padding:4px 2px 6px; }
+  .group-header{ background:#D9C99A; color:#5A4A26; font-size:10.5px; font-weight:700; letter-spacing:0.3px; text-transform:uppercase; padding:6px 11px; border-radius:8px; margin:8px 0 7px; }
   .med-card{ display:flex; align-items:center; gap:12px; background:var(--bg-card); border:1px solid var(--line); border-radius:16px; padding:11px 13px; margin-bottom:9px; cursor:pointer; box-shadow:0 2px 4px rgba(43,43,36,0.07), 0 4px 12px rgba(43,43,36,0.08); }
   .card-added{ animation:cardFlash 1.8s ease; }
   @keyframes cardFlash{ 0%{ background:var(--amber-pale); } 100%{ background:var(--bg-card); } }
@@ -177,6 +177,7 @@
   .sort-toggle button{ flex:1; border:none; background:transparent; padding:9px 2px; font-size:11px; font-weight:700; color:var(--text-dim); border-radius:9px; cursor:pointer; }
   .sort-toggle button.active{ background:var(--green-deep); color:#fff; }
   .detail-field{ margin-bottom:16px; }
+  .detail-action-btn{ display:block; width:100%; padding:12px; border-radius:12px; font-weight:700; font-size:13.5px; cursor:pointer; margin-bottom:16px; }
   .detail-field-label{ font-size:12.5px; color:var(--text-dim); font-weight:600; margin-bottom:7px; }
   .detail-field-value{ background:var(--bg-elevated); border-radius:12px; padding:13px 14px; font-size:14.5px; color:var(--text); line-height:1.5; }
   .detail-field-value.warn{ color:var(--amber); font-weight:600; }
@@ -658,7 +659,7 @@ function renderDetail(){
     '<div class="detail-field"><div class="detail-field-label">NAČIN UPOTREBE</div><div class="detail-field-value'+(it.doziranje?'':' muted')+'">'+(it.doziranje ? escapeHtml(it.doziranje) : 'Nije uneto')+'</div></div>'+
     (it.kategorija ? '<div class="detail-field"><div class="detail-field-label">ZA ŠTA SE KORISTI</div><div class="detail-field-value">'+escapeHtml(it.kategorija)+'</div></div>' : '')+
     (it.napomena ? '<div class="detail-field"><div class="detail-field-label">NAPOMENA / UPOZORENJE</div><div class="detail-field-value warn">'+escapeHtml(it.napomena)+'</div></div>' : '')+
-    (it.prosireno ? '<button class="cancel-btn" style="width:100%; padding:12px; border-radius:12px; font-weight:700; font-size:13.5px; margin-bottom:16px; cursor:pointer;" onclick="openExpandedInfo(\''+it.id+'\')">📋 Više detalja</button>' : '')+
+    (it.prosireno ? '<button class="cancel-btn detail-action-btn" onclick="openExpandedInfo(\''+it.id+'\')">📋 Više detalja</button>' : '')+
     '<div class="detail-field"><div class="detail-field-label">ROK TRAJANJA</div><div class="detail-field-value" style="color:'+rokColor+'; font-weight:600;">'+(it.rok ? dmyFromISO(it.rok)+(s.key==='soon'||s.key==='expired' ? ' — '+s.label : '') : '⚠ Rok trajanja nije unet')+'</div></div>'+
     '<div class="detail-field">'+
     '<div class="detail-field-label">INFORMACIJE SA INTERNETA</div>'+
@@ -668,14 +669,13 @@ function renderDetail(){
         ('<div class="detail-field-value">'+escapeHtml(it.internetInfo.tekst)+'</div>'+
          (it.internetInfo.izvorUrl ? '<div style="margin-top:7px;font-size:12px;"><a href="'+escapeHtml(it.internetInfo.izvorUrl)+'" target="_blank" rel="noopener" style="color:var(--green-deep); font-weight:600;">Izvor'+(it.internetInfo.izvorNaziv?(': '+escapeHtml(it.internetInfo.izvorNaziv)):'')+' ↗</a></div>' : '')+
          '<div class="field-hint" style="margin-top:8px;">Preuzeto sa interneta — ne zamenjuje savet farmaceuta ili lekara.</div>'+
-         '<button class="cancel-btn" style="margin-top:10px; width:auto; padding:9px 14px; border-radius:10px; font-size:12.5px; font-weight:700;" onclick="fetchInternetInfo(\''+it.id+'\')">Pretraži ponovo</button>')
+         '<button class="cancel-btn detail-action-btn" style="margin-top:10px;" onclick="fetchInternetInfo(\''+it.id+'\')">Pretraži ponovo</button>')
         :
-        ('<button class="save-btn" style="width:auto; padding:11px 16px; border-radius:12px; font-size:13.5px;" onclick="fetchInternetInfo(\''+it.id+'\')">🔍 Pretraži uputstvo na internetu</button>')
+        ('<button class="save-btn detail-action-btn" onclick="fetchInternetInfo(\''+it.id+'\')">🔍 Pretraži uputstvo na internetu</button>')
       )
     )+
     '</div>'+
-    '</div>'+
-    '<div style="padding:0 18px 12px;"><button class="save-btn" style="width:100%; padding:12px; border-radius:12px; font-size:13.5px;" onclick="quickAddToShoppingList(\''+it.id+'\')">🛒 Dodaj na spisak za kupovinu</button></div>'+
+    '<button class="save-btn detail-action-btn" onclick="quickAddToShoppingList(\''+it.id+'\')">🛒 Dodaj na spisak za kupovinu</button>'+
     '<div class="detail-actions">'+
     '<button class="cancel-btn" style="flex:1;padding:13px;border-radius:13px;border:none;font-weight:700;cursor:pointer;" onclick="openEditForm(\''+it.id+'\')">Izmeni</button>'+
     '<button class="delete-btn" style="flex:1;padding:13px;border-radius:13px;border:none;font-weight:700;cursor:pointer;" onclick="confirmDeleteItem(\''+it.id+'\')">Obriši</button>'+
