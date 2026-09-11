@@ -174,7 +174,7 @@
   .gc-sub{ font-size:10.5px; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .gc-badge{ position:absolute; top:8px; right:8px; font-size:9px; font-weight:700; padding:3px 8px; border-radius:20px; white-space:nowrap; }
   .sort-toggle{ display:flex; gap:3px; background:var(--bg-elevated); border-radius:11px; padding:3px; margin:2px 0 8px; }
-  .sort-toggle button{ flex:1; border:none; background:transparent; padding:9px 2px; font-size:11px; font-weight:700; color:var(--text-dim); border-radius:9px; cursor:pointer; }
+  .sort-toggle button{ flex:1; border:none; background:transparent; padding:9px 2px; font-size:10px; font-weight:700; color:var(--text-dim); border-radius:9px; cursor:pointer; white-space:nowrap; }
   .sort-toggle button.active{ background:var(--green-deep); color:#fff; }
   .detail-field{ margin-bottom:16px; }
   .detail-action-btn{ display:block; width:100%; padding:12px; border-radius:12px; font-weight:700; font-size:13.5px; cursor:pointer; margin-bottom:16px; }
@@ -579,7 +579,7 @@ function render(){
     (items.length>0 ? ('<div class="sort-toggle"><button class="'+(settings.sortMode==='naziv'?'active':'')+'" onclick="setSortMode(\'naziv\')">Naziv</button>'+
     '<button class="'+(settings.sortMode==='kategorija'?'active':'')+'" onclick="setSortMode(\'kategorija\')">Kategorija</button>'+
     '<button class="'+(settings.sortMode==='tip'?'active':'')+'" onclick="setSortMode(\'tip\')">Tip</button>'+
-    '<button class="'+(settings.sortMode==='rok'?'active':'')+'" onclick="setSortMode(\'rok\')">Rok</button></div>') : '')+
+    '<button class="'+(settings.sortMode==='rok'?'active':'')+'" onclick="setSortMode(\'rok\')">Datum isteka</button></div>') : '')+
     expiryHtml+
     '</div>'+
     '<div class="list-area">'+listHtml+'</div>'+
