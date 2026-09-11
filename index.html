@@ -155,6 +155,8 @@
   .chat-item-refs{ display:flex; flex-direction:column; gap:7px; margin-top:6px; max-width:88%; }
   .chat-item-chip{ display:flex; align-items:center; gap:10px; background:var(--bg-card); border:1px solid var(--line); border-radius:13px; padding:10px 12px; cursor:pointer; box-shadow:0 1px 3px rgba(43,43,36,0.07); }
   .chat-item-chip .cic-icon{ font-size:19px; width:30px; height:30px; border-radius:8px; background:var(--green-pale); display:flex; align-items:center; justify-content:center; flex:none; overflow:hidden; }
+  .shop-thumb{ width:34px; height:34px; border-radius:9px; overflow:hidden; flex:none; cursor:pointer; border:1px solid var(--line); }
+  .shop-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
   .chat-item-chip .cic-icon img{ width:100%; height:100%; object-fit:cover; }
   .chat-item-chip .cic-name{ font-size:13.5px; font-weight:600; color:var(--text); flex:1; }
   .chat-item-chip .cic-arrow{ color:var(--green-deep); font-size:15px; flex:none; }
@@ -392,15 +394,15 @@ function loadShoppingList(){
   const saved = lsGet('apoteka:shopping');
   if(saved && saved.value){ try{ shoppingList = JSON.parse(saved.value); }catch(e){} }
 }
-function addToShoppingList(tekst){
+function addToShoppingList(tekst, itemId){
   if(!tekst || !tekst.trim()) return;
-  shoppingList.push({ id: uid('s'), tekst: tekst.trim(), kupljeno:false });
+  shoppingList.push({ id: uid('s'), tekst: tekst.trim(), kupljeno:false, itemId: itemId||null });
   persistShoppingList();
 }
 function quickAddToShoppingList(id){
   const it = getItem(id);
   if(!it) return;
-  addToShoppingList(it.naziv);
+  addToShoppingList(it.naziv, it.id);
   closeCardQuickMenu();
   showBanner('Dodato na spisak za kupovinu.', 'info');
 }
@@ -423,13 +425,15 @@ function renderShoppingList(){
     '<button class="chat-close-btn" onclick="closeShoppingList()">✕</button></div>'+
     '<div class="chat-messages" id="shoppingListEl">'+
     (shoppingList.length===0 ? '<div class="chat-empty">Spisak je prazan. Dodaj nešto ispod, ili preko dugog pritiska na karticu leka.</div>' :
-      shoppingList.map(s=>
-        '<div style="display:flex; align-items:center; gap:10px; background:var(--bg-card); border:1px solid var(--line); border-radius:13px; padding:11px 13px;">'+
+      shoppingList.map(s=>{
+        const linked = s.itemId ? getItem(s.itemId) : null;
+        return '<div style="display:flex; align-items:center; gap:10px; background:var(--bg-card); border:1px solid var(--line); border-radius:13px; padding:11px 13px;">'+
         '<button onclick="toggleShoppingItem(\''+s.id+'\')" style="width:24px;height:24px;border-radius:7px;border:2px solid '+(s.kupljeno?'var(--green-deep)':'var(--line)')+';background:'+(s.kupljeno?'var(--green-deep)':'transparent')+';color:#fff;font-size:13px;flex:none;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">'+(s.kupljeno?'✓':'')+'</button>'+
+        (linked && linked.slika ? '<div class="shop-thumb" onclick="openPhotoFullScreen(\''+linked.id+'\')"><img src="'+linked.slika+'"></div>' : '')+
         '<span style="flex:1; font-size:14px;'+(s.kupljeno?'text-decoration:line-through;color:var(--text-dim);':'')+'">'+escapeHtml(s.tekst)+'</span>'+
         '<button onclick="removeShoppingItem(\''+s.id+'\')" style="background:none;border:none;color:var(--coral);font-size:15px;cursor:pointer;flex:none;padding:4px;">✕</button>'+
-        '</div>'
-      ).join('')
+        '</div>';
+      }).join('')
     )+
     '</div>'+
     '<div class="chat-input-row">'+
