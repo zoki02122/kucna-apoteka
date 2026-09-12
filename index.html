@@ -61,10 +61,10 @@
   .med-info{ flex:1; min-width:0; }
   .med-name{ font-size:15.5px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .med-sub{ font-size:12px; color:var(--text-dim); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .med-badge{ flex:none; font-size:10.5px; font-weight:700; padding:4px 9px; border-radius:20px; white-space:nowrap; }
-  .badge-ok{ background:var(--green-pale); color:var(--green-deep); }
-  .badge-soon{ background:var(--amber-pale); color:var(--amber); }
-  .badge-expired{ background:var(--coral-pale); color:var(--coral); }
+  .med-badge{ flex:none; font-size:10.5px; font-weight:700; padding:4px 9px; border-radius:20px; white-space:nowrap; min-width:74px; text-align:center; background:var(--bg-elevated); color:var(--text-dim); }
+  .badge-ok{ background:var(--bg-elevated); color:var(--text-dim); }
+  .badge-soon{ background:var(--bg-elevated); color:var(--text-dim); }
+  .badge-expired{ background:var(--bg-elevated); color:var(--text-dim); }
   .badge-missing{ background:var(--bg-elevated); color:var(--text-dim); }
 
   .empty{ text-align:center; color:var(--text-dim); padding:60px 24px; font-size:14.5px; line-height:1.7; }
@@ -335,7 +335,7 @@ window.addEventListener('popstate', function(){
 });
 
 function expiryStatus(item){
-  if(!item.rok) return { key:'missing', label:'Rok nepoznat' };
+  if(!item.rok) return { key:'missing', label:'' };
   const d = daysUntil(item.rok);
   if(d < 0) return { key:'expired', label:'Isteklo' };
   if(d <= settings.expiryThresholdDays) return { key:'soon', label:'Ističe za '+d+' d.' };
@@ -370,6 +370,7 @@ function openCardQuickMenu(id){
     '<button class="modal-close-x" onclick="closeCardQuickMenu()">✕</button>'+
     '<h2 class="serif" style="font-size:16px; padding-right:30px;">'+escapeHtml(displayNaziv(it.naziv))+'</h2>'+
     '<div style="display:flex; flex-direction:column; gap:9px; margin-top:4px;">'+
+    '<button class="cancel-btn" style="text-align:left; padding:13px 14px; border-radius:12px; font-weight:700; font-size:14px;" onclick="quickTogglePin(\''+it.id+'\')">'+(it.pinned ? '📌 Otkači sa vrha' : '📌 Zakači na vrh')+'</button>'+
     '<button class="cancel-btn" style="text-align:left; padding:13px 14px; border-radius:12px; font-weight:700; font-size:14px;" onclick="quickAddToShoppingList(\''+it.id+'\')">🛒 Dodaj na spisak za kupovinu</button>'+
     '<button class="delete-btn" style="text-align:left; padding:13px 14px; border-radius:12px; font-weight:700; font-size:14px;" onclick="quickDeleteFromMenu(\''+it.id+'\')">🗑 Obriši</button>'+
     '</div></div>';
@@ -377,6 +378,15 @@ function openCardQuickMenu(id){
   b.addEventListener('click',(e)=>{ if(e.target===b) closeCardQuickMenu(); });
   cardMenuCloseFn = ()=>{ const bb=document.getElementById('cardMenuBackdrop'); if(bb) bb.remove(); cardMenuCloseFn=null; };
   pushOverlay(cardMenuCloseFn);
+}
+function quickTogglePin(id){
+  const it = getItem(id);
+  if(!it) return;
+  it.pinned = !it.pinned;
+  persistItems();
+  closeCardQuickMenu();
+  render();
+  showBanner(it.pinned ? 'Zakačeno na vrh.' : 'Otkačeno.', 'info');
 }
 function closeCardQuickMenu(){
   if(cardMenuCloseFn){ closeOverlay(cardMenuCloseFn); cardMenuCloseFn = null; }
@@ -488,6 +498,7 @@ function sortItems(arr){
   } else {
     copy.sort((a,b)=> a.naziv.localeCompare(b.naziv,'sr'));
   }
+  copy.sort((a,b)=> (b.pinned?1:0)-(a.pinned?1:0));
   return copy;
 }
 function setSortMode(mode){
@@ -532,6 +543,7 @@ function render(){
 
   let listHtml;
   function groupKeyForSort(it){
+    if(it.pinned) return '📌 Zakačeno';
     if(settings.sortMode==='kategorija') return (it.kategorija && it.kategorija.trim()) || 'Bez kategorije';
     if(settings.sortMode==='tip') return (it.tip && it.tip.trim()) || 'Bez tipa';
     return null;
@@ -546,9 +558,9 @@ function render(){
         const badgeClass = s.key==='ok' ? 'badge-ok' : s.key==='soon' ? 'badge-soon' : s.key==='expired' ? 'badge-expired' : 'badge-missing';
         return '<div class="grid-card" id="item-'+it.id+'" onclick="handleCardClick(\''+it.id+'\')" onpointerdown="startCardLongPress(\''+it.id+'\')" onpointerup="cancelCardLongPress()" onpointerleave="cancelCardLongPress()" onpointercancel="cancelCardLongPress()">'+
           '<div class="med-thumb"'+(it.slika?' onclick="event.stopPropagation(); openPhotoFullScreen(\''+it.id+'\')"':'')+'>'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
-          '<div class="gc-name">'+escapeHtml(displayNaziv(it.naziv))+'</div>'+
+          '<div class="gc-name">'+(it.pinned?'📌 ':'')+escapeHtml(displayNaziv(it.naziv))+'</div>'+
           '<div class="gc-sub">'+[it.tip, it.kategorija].filter(Boolean).map(escapeHtml).join(' · ')+'</div>'+
-          '<div class="med-badge gc-badge '+badgeClass+'">'+s.label+'</div>'+
+          (s.label ? '<div class="med-badge gc-badge '+badgeClass+'">'+s.label+'</div>' : '')+
           '</div>';
       }).join('')+
       '</div>';
@@ -563,9 +575,9 @@ function render(){
         if(gk!==null && gk!==lastGroup){ headerHtml = '<div class="group-header">'+escapeHtml(gk)+'</div>'; lastGroup = gk; }
         return headerHtml+'<div class="med-card" id="item-'+it.id+'" onclick="handleCardClick(\''+it.id+'\')" onpointerdown="startCardLongPress(\''+it.id+'\')" onpointerup="cancelCardLongPress()" onpointerleave="cancelCardLongPress()" onpointercancel="cancelCardLongPress()">'+
           '<div class="med-thumb"'+(it.slika?' onclick="event.stopPropagation(); openPhotoFullScreen(\''+it.id+'\')"':'')+'>'+(it.slika ? '<img src="'+it.slika+'">' : it.ikonica||'💊')+'</div>'+
-          '<div class="med-info"><div class="med-name">'+escapeHtml(displayNaziv(it.naziv))+'</div>'+
+          '<div class="med-info"><div class="med-name">'+(it.pinned?'📌 ':'')+escapeHtml(displayNaziv(it.naziv))+'</div>'+
           '<div class="med-sub">'+[it.tip, it.kategorija].filter(Boolean).map(escapeHtml).join(' · ')+'</div></div>'+
-          '<div class="med-badge '+badgeClass+'">'+s.label+'</div>'+
+          (s.label ? '<div class="med-badge '+badgeClass+'">'+s.label+'</div>' : '')+
           '</div>';
       }).join('');
   }
