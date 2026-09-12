@@ -135,6 +135,8 @@
   #statusBanner.error{ background:var(--coral); color:#fff; }
   #statusBanner.info{ background:var(--green-deep); color:#fff; }
   #statusBanner .closeBtn{ margin-left:auto; flex:none; background:none; border:none; color:#fff; font-size:15px; cursor:pointer; opacity:0.85; }
+  .backup-reminder-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--coral); color:#fff; font-size:12px; font-weight:600; padding:9px 11px; border-radius:11px; margin-bottom:9px; }
+  .backup-reminder-row button{ flex:none; background:rgba(255,255,255,0.2); color:#fff; border:1px solid rgba(255,255,255,0.4); padding:6px 11px; border-radius:8px; font-weight:700; font-size:11.5px; font-family:inherit; cursor:pointer; }
   .photo-full-close{ position:absolute; top:18px; right:18px; width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,0.15); border:none; color:#fff; font-size:16px; cursor:pointer; }
   #undoToast{ position:fixed; left:14px; right:14px; bottom:96px; max-width:492px; margin:0 auto; z-index:55; background:var(--text); color:#fff; border-radius:13px; padding:12px 14px; display:none; align-items:center; justify-content:space-between; gap:10px; font-size:13px; box-shadow:0 6px 20px rgba(0,0,0,0.25); }
   #undoToast.show{ display:flex; }
@@ -248,6 +250,93 @@ function uid(p){ return p+Date.now()+Math.random().toString(36).slice(2,6); }
 /* ---------- PERSISTENCE (localStorage) ---------- */
 function lsGet(key){ try{ const v=localStorage.getItem(key); return v===null?null:{value:v}; }catch(e){ return null; } }
 function lsSet(key,val){ try{ localStorage.setItem(key,val); }catch(e){} }
+
+/* ---------- BACKUP: export / import / reminder ---------- */
+function exportBackup(){
+  const backup = { version:1, exportedAt: new Date().toISOString(), items: items, settings: settings };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'apoteka-bekap-'+todayISO()+'.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  markBackupDone();
+  render();
+  const hintEl = document.getElementById('lastBackupHint');
+  if(hintEl) hintEl.textContent = 'Poslednji bekap: '+lastBackupDisplay();
+  showBanner('Bekap preuzet — sačuvaj ga na sigurno mesto (npr. Google Drive).', 'info');
+}
+function triggerImportBackup(){
+  const inp = document.getElementById('backupFileInput');
+  if(inp) inp.click();
+}
+function handleImportFile(fileInput){
+  const file = fileInput.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    let backup;
+    try{ backup = JSON.parse(e.target.result); }
+    catch(err){ showBanner('Fajl nije validan (nije ispravan JSON).'); return; }
+    if(!backup || !Array.isArray(backup.items)){ showBanner('Ovaj fajl ne izgleda kao ispravan bekap.'); return; }
+    const count = backup.items.length;
+    const when = backup.exportedAt ? backup.exportedAt.slice(0,10) : 'nepoznatog datuma';
+    showConfirm('Ovo će zameniti trenutne podatke sa '+count+' stavki iz bekapa od '+when+'. Trenutni podaci će biti izgubljeni. Nastaviti?', ()=>{
+      applyBackup(backup);
+    }, 'Da, uvezi');
+  };
+  reader.readAsText(file);
+  fileInput.value = '';
+}
+function applyBackup(backup){
+  items = backup.items || [];
+  persistItems();
+  if(backup.settings){ settings = Object.assign(settings, backup.settings); persistSettings(); }
+  closeSettings();
+  render();
+  showBanner('Bekap uspešno uvezen.', 'info');
+}
+function getBackupIntervalDays(){
+  const v = lsGet('apoteka:backupIntervalDays');
+  const n = v ? parseInt(v.value) : NaN;
+  return (n && n > 0) ? n : 7;
+}
+function setBackupIntervalDays(days){ lsSet('apoteka:backupIntervalDays', String(days)); }
+function getLastBackupDate(){
+  const v = lsGet('apoteka:lastBackup');
+  return v ? new Date(v.value) : null;
+}
+function markBackupDone(){ lsSet('apoteka:lastBackup', new Date().toISOString()); }
+function daysSinceBackup(date){ return Math.floor((Date.now() - date.getTime()) / 86400000); }
+function lastBackupDisplay(){
+  const last = getLastBackupDate();
+  if(!last) return 'nikad';
+  return String(last.getDate()).padStart(2,'0')+'.'+String(last.getMonth()+1).padStart(2,'0')+'.'+last.getFullYear()+'.';
+}
+function backupReminderHtml(){
+  const last = getLastBackupDate();
+  const interval = getBackupIntervalDays();
+  let msg = null;
+  if(!last){
+    msg = 'Nikad nisi napravio bekap podataka.';
+  } else {
+    const d = daysSinceBackup(last);
+    if(d >= interval) msg = 'Prošlo je '+d+' dana od poslednjeg bekapa.';
+  }
+  if(!msg) return '';
+  return '<div class="backup-reminder-row">'+
+    '<span>'+escapeHtml(msg)+'</span>'+
+    '<button onclick="exportBackup()">izvezi bekap</button>'+
+    '</div>';
+}
+function saveBackupInterval(val){
+  const n = parseInt(val) || 7;
+  setBackupIntervalDays(n);
+  render();
+}
 function persistItems(){ lsSet('apoteka:items', JSON.stringify(items)); }
 function loadItems(){
   const saved = lsGet('apoteka:items');
@@ -584,6 +673,7 @@ function render(){
 
   app.innerHTML =
     '<div class="topbar">'+
+    backupReminderHtml()+
     '<div class="topbar-row">'+
     '<div class="app-title serif">Kućna apoteka</div>'+
     '<button class="icon-btn" onclick="toggleViewMode()" title="Promeni prikaz">'+(settings.viewMode==='mreza'?'☰':'▦')+'</button>'+
@@ -1655,13 +1745,23 @@ function openSettings(){
   b.innerHTML = '<div class="modal">'+
     '<button class="modal-close-x" onclick="closeSettings()">✕</button>'+
     '<h2 class="serif">Podešavanja</h2>'+
-    '<button class="save-btn" style="width:100%; padding:12px; border-radius:12px; font-size:13.5px; margin-bottom:18px;" onclick="openHelpScreen()">📖 Uputstvo za korišćenje</button>'+
+    '<button class="save-btn" style="width:100%; padding:12px; border-radius:12px; font-size:13.5px; margin-bottom:18px;" onclick="openHelpScreen()">📖 Uputstvo za korišćenje aplikacije</button>'+
     '<div class="field"><label>Upozori me koliko dana pre isteka roka</label>'+
     '<input id="sThreshold" type="number" min="1" max="365" value="'+settings.expiryThresholdDays+'"></div>'+
     '<div class="field-hint" style="margin-bottom:18px;">Lekovi i suplementi čiji rok ističe unutar ovog broja dana pojaviće se u traci "Ističe uskoro" na početnom ekranu.</div>'+
     '<div class="field"><label>Google Gemini API ključ</label>'+
     '<input id="sApiKey" type="password" value="'+escapeHtml(getApiKey())+'" placeholder="AIza..."></div>'+
     '<div class="field-hint">Ključ se čuva samo na ovom telefonu, u ovom pregledaču. Napraviš ga besplatno na aistudio.google.com (bez kartice) → Get API key. Potreban je da bi čitanje fotografije pakovanja radilo.</div>'+
+    '<div class="field" style="margin-top:18px;"><label>Bekap podataka</label></div>'+
+    '<div class="modal-actions" style="margin-bottom:10px;">'+
+    '<button class="cancel-btn" style="flex:1;" onclick="exportBackup()">Izvezi bekap</button>'+
+    '<button class="cancel-btn" style="flex:1;" onclick="triggerImportBackup()">Uvezi bekap</button>'+
+    '</div>'+
+    '<input type="file" id="backupFileInput" accept=".json" style="display:none" onchange="handleImportFile(this)">'+
+    '<div class="field-hint" id="lastBackupHint">Poslednji bekap: '+lastBackupDisplay()+'</div>'+
+    '<div class="field" style="margin-top:14px;"><label>Podseti me na svakih (dana) bez bekapa</label>'+
+    '<input type="number" min="1" id="backupIntervalInput" value="'+getBackupIntervalDays()+'" oninput="saveBackupInterval(this.value)"></div>'+
+    '<div class="field-hint" style="margin-bottom:18px;">Kad prođe ovoliko dana od poslednjeg bekapa, gore na vrhu će se pojaviti podsetnik.</div>'+
     '<div class="modal-actions" style="margin-top:16px;"><button class="cancel-btn" onclick="closeSettings()">Otkaži</button>'+
     '<button class="save-btn" onclick="saveSettings()">Sačuvaj</button></div>'+
     '</div>';
@@ -1692,7 +1792,7 @@ function openHelpScreen(){
   b.innerHTML = '<div class="modal full">'+
     '<button class="modal-close-x" onclick="closeHelpScreen()">✕</button>'+
     '<div class="detail-body" style="padding-top:60px;">'+
-    '<h2 class="serif" style="margin-bottom:6px;">📖 Uputstvo za korišćenje</h2>'+
+    '<h2 class="serif" style="margin-bottom:6px;">📖 Uputstvo za korišćenje aplikacije</h2>'+
     '<div class="field-hint" style="margin-bottom:18px;">Kratak pregled svega što aplikacija ume.</div>'+
     sections.map(s=>'<div class="detail-field"><div class="detail-field-label">'+escapeHtml(s.t.toUpperCase())+'</div><div class="detail-field-value">'+escapeHtml(s.c)+'</div></div>').join('')+
     '</div></div>';
