@@ -80,10 +80,10 @@
   .send-btn{ width:50px; height:50px; border-radius:50%; border:none; background:linear-gradient(150deg, var(--green), var(--green-deep)); color:#fff; font-size:19px; cursor:pointer; flex:none; box-shadow:0 3px 10px rgba(40,64,47,0.35); }
 
   /* ---- Modal / overlay ---- */
-  .modal-backdrop{ position:fixed; inset:0; background:rgba(20,26,20,0.45); display:flex; align-items:flex-end; justify-content:center; z-index:46; }
+  .modal-backdrop{ position:fixed; inset:0; background:rgba(20,26,20,0.45); display:flex; align-items:center; justify-content:center; z-index:46; }
   .modal-backdrop.top{ align-items:flex-start; padding-top:0; }
-  .modal{ background:#fff; width:100%; max-width:520px; border-radius:22px 22px 0 0; padding:22px 18px calc(22px + env(safe-area-inset-bottom)); max-height:90vh; overflow-y:auto; box-sizing:border-box; position:relative; box-shadow:0 -8px 30px rgba(20,26,20,0.18); }
-  .modal.full{ border-radius:0; max-height:100vh; height:100vh; padding-top:0; }
+  .modal{ background:#fff; width:calc(100% - 32px); max-width:520px; border-radius:22px; padding:22px 18px calc(22px + env(safe-area-inset-bottom)); max-height:85vh; overflow-y:auto; box-sizing:border-box; position:fixed; top:42%; left:50%; transform:translate(-50%,-50%); margin:0; box-shadow:0 14px 40px rgba(20,26,20,0.25); }
+  .modal.full{ border-radius:0; max-height:100vh; height:100vh; padding-top:0; position:fixed; top:0; left:0; transform:none; width:100%; max-width:100%; }
   .modal-close-x{ position:absolute; top:16px; right:16px; width:32px; height:32px; border-radius:50%; border:none; background:var(--bg-elevated); color:var(--text-dim); font-size:15px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:5; }
   .modal h2{ margin:0 0 16px; font-size:19px; color:var(--green-deep); padding-right:34px; }
 
@@ -1856,7 +1856,7 @@ document.addEventListener('keydown', function onceK(){
 }, {once:true});
 function showExitConfirm(){
   const b = document.createElement('div'); b.className='modal-backdrop'; b.id='exitBackdrop';
-  b.innerHTML = '<div class="modal" style="border-radius:22px; text-align:center; position:fixed; top:42%; left:50%; transform:translate(-50%,-50%); margin:0; width:calc(100% - 32px); max-width:520px;">'+
+  b.innerHTML = '<div class="modal" style="text-align:center;">'+
     '<div style="font-size:128px; line-height:1; margin-bottom:10px;">🚪</div>'+
     '<h2 class="serif">Izlazak iz aplikacije</h2>'+
     '<p style="font-size:14.5px; color:var(--text); line-height:1.5; margin:0 0 20px;">Da li sigurno želite da izađete?</p>'+
