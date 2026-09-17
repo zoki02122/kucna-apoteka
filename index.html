@@ -1840,7 +1840,6 @@ function runConfirmYes(){ const fn=__confirmYes; closeConfirm(); if(fn) fn(); }
 /* ---------- EXIT CONFIRMATION ---------- */
 let exitTrapArmed = false;
 let exitConfirmed = false;
-let exitCloseFn = null;
 function armExitTrap(){
   if(!exitTrapArmed){
     try{ history.pushState({exitTrap:true}, '', location.href); }catch(e){}
@@ -1864,13 +1863,12 @@ function showExitConfirm(){
     '<div class="modal-actions"><button class="cancel-btn" id="exitStayBtn">↩️ Ostani</button>'+
     '<button class="delete-btn" id="exitLeaveBtn">🚪 Izađi</button></div></div>';
   document.body.appendChild(b);
-  exitCloseFn = ()=>{ const bb=document.getElementById('exitBackdrop'); if(bb) bb.remove(); exitCloseFn=null; };
-  pushOverlay(exitCloseFn);
-  document.getElementById('exitStayBtn').onclick = ()=>{ closeOverlay(exitCloseFn); armExitTrap(); };
+  document.getElementById('exitStayBtn').onclick = ()=>{
+    b.remove();
+    armExitTrap();
+  };
   document.getElementById('exitLeaveBtn').onclick = ()=>{
-    const idx = overlayStack.lastIndexOf(exitCloseFn);
-    if(idx!==-1) overlayStack.splice(idx,1);
-    exitCloseFn(); exitCloseFn=null;
+    b.remove();
     exitConfirmed = true;
     try{ history.back(); }catch(e){}
   };
