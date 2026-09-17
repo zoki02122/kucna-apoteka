@@ -1856,12 +1856,12 @@ document.addEventListener('keydown', function onceK(){
 }, {once:true});
 function showExitConfirm(){
   const b = document.createElement('div'); b.className='modal-backdrop'; b.id='exitBackdrop';
-  b.innerHTML = '<div class="modal" style="border-radius:22px; text-align:center;">'+
-    '<div style="font-size:56px; line-height:1; margin-bottom:8px;">🚪</div>'+
+  b.innerHTML = '<div class="modal" style="border-radius:22px; text-align:center; position:fixed; top:42%; left:50%; transform:translate(-50%,-50%); margin:0; width:calc(100% - 32px); max-width:520px;">'+
+    '<div style="font-size:128px; line-height:1; margin-bottom:10px;">🚪</div>'+
     '<h2 class="serif">Izlazak iz aplikacije</h2>'+
     '<p style="font-size:14.5px; color:var(--text); line-height:1.5; margin:0 0 20px;">Da li sigurno želite da izađete?</p>'+
-    '<div class="modal-actions"><button class="cancel-btn" id="exitStayBtn">↩️ Ostani</button>'+
-    '<button class="delete-btn" id="exitLeaveBtn">🚪 Izađi</button></div></div>';
+    '<div class="modal-actions"><button class="cancel-btn" id="exitStayBtn"><span style="font-size:44px; vertical-align:-14px; margin-right:6px;">↩️</span>Ostani</button>'+
+    '<button class="delete-btn" id="exitLeaveBtn"><span style="font-size:44px; vertical-align:-14px; margin-right:6px;">🚪</span>Izađi</button></div></div>';
   document.body.appendChild(b);
   document.getElementById('exitStayBtn').onclick = ()=>{
     b.remove();
