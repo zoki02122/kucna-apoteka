@@ -131,6 +131,10 @@
   .attach-menu-opt .ao-icon{ width:54px; height:54px; border-radius:50%; background:var(--bg-elevated); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:22px; }
   .attach-menu-opt span{ font-size:12px; color:var(--text); font-weight:600; }
   #statusBanner{ position:fixed; top:0; left:0; right:0; z-index:60; max-width:520px; margin:0 auto; padding:13px 16px; font-size:13px; font-weight:600; line-height:1.45; display:none; align-items:flex-start; gap:10px; box-shadow:0 2px 12px rgba(0,0,0,0.18); }
+  .quick-toast{ position:fixed; top:42%; left:50%; z-index:65; background:var(--bg-card); border:1px solid var(--line); border-radius:20px; padding:24px 28px; box-shadow:0 10px 34px rgba(0,0,0,0.28); display:flex; flex-direction:column; align-items:center; gap:9px; text-align:center; max-width:250px; opacity:0; pointer-events:none; transform:translate(-50%,-50%) scale(0.88); transition:opacity 0.22s ease, transform 0.22s ease; }
+  .quick-toast.show{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+  .quick-toast .qt-icon{ font-size:36px; line-height:1; }
+  .quick-toast .qt-text{ font-size:14.5px; font-weight:700; color:var(--text); }
   #statusBanner.show{ display:flex; }
   #statusBanner.error{ background:var(--coral); color:#fff; }
   #statusBanner.info{ background:var(--green-deep); color:#fff; }
@@ -353,6 +357,15 @@ function setApiKey(v){ lsSet('apoteka:apiKey', v); }
 
 /* ---------- STATUS BANNER ---------- */
 let bannerTimeout=null;
+let quickToastTimeout = null;
+function showQuickToast(msg, icon){
+  let el = document.getElementById('quickToast');
+  if(!el){ el = document.createElement('div'); el.id='quickToast'; el.className='quick-toast'; document.body.appendChild(el); }
+  el.innerHTML = '<div class="qt-icon">'+(icon||'🛒')+'</div><div class="qt-text">'+escapeHtml(msg)+'</div>';
+  el.classList.add('show');
+  clearTimeout(quickToastTimeout);
+  quickToastTimeout = setTimeout(()=>{ el.classList.remove('show'); }, 1700);
+}
 function showBanner(msg, type){
   type = type||'error';
   const b = document.getElementById('statusBanner');
@@ -510,7 +523,7 @@ function quickAddToShoppingList(id){
   if(!it) return;
   const added = addToShoppingList(it.naziv, it.id);
   closeCardQuickMenu();
-  showBanner(added ? 'Dodato na spisak za kupovinu.' : 'Već je na spisku za kupovinu.', 'info');
+  showQuickToast(added ? 'Dodato na spisak za kupovinu.' : 'Već je na spisku za kupovinu.', added ? '🛒' : '📋');
 }
 let shoppingCloseFn = null;
 function openShoppingList(){
@@ -554,7 +567,7 @@ function submitShoppingInput(){
   if(el) el.value = '';
   const added = addToShoppingList(val);
   renderShoppingList();
-  if(!added) showBanner('Već je na spisku za kupovinu.', 'info');
+  if(!added) showQuickToast('Već je na spisku za kupovinu.', '📋');
   const el2 = document.getElementById('shoppingInput');
   if(el2) el2.focus();
 }
