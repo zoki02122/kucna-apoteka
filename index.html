@@ -497,16 +497,20 @@ function loadShoppingList(){
   if(saved && saved.value){ try{ shoppingList = JSON.parse(saved.value); }catch(e){} }
 }
 function addToShoppingList(tekst, itemId){
-  if(!tekst || !tekst.trim()) return;
+  if(!tekst || !tekst.trim()) return false;
+  const norm = foldDiacritics(tekst.trim());
+  const dup = shoppingList.some(s => (itemId && s.itemId===itemId) || foldDiacritics(s.tekst)===norm);
+  if(dup) return false;
   shoppingList.push({ id: uid('s'), tekst: tekst.trim(), kupljeno:false, itemId: itemId||null });
   persistShoppingList();
+  return true;
 }
 function quickAddToShoppingList(id){
   const it = getItem(id);
   if(!it) return;
-  addToShoppingList(it.naziv, it.id);
+  const added = addToShoppingList(it.naziv, it.id);
   closeCardQuickMenu();
-  showBanner('Dodato na spisak za kupovinu.', 'info');
+  showBanner(added ? 'Dodato na spisak za kupovinu.' : 'Već je na spisku za kupovinu.', 'info');
 }
 let shoppingCloseFn = null;
 function openShoppingList(){
@@ -548,8 +552,9 @@ function submitShoppingInput(){
   const val = el ? el.value.trim() : '';
   if(!val) return;
   if(el) el.value = '';
-  addToShoppingList(val);
+  const added = addToShoppingList(val);
   renderShoppingList();
+  if(!added) showBanner('Već je na spisku za kupovinu.', 'info');
   const el2 = document.getElementById('shoppingInput');
   if(el2) el2.focus();
 }
@@ -558,9 +563,13 @@ function toggleShoppingItem(id){
   if(s){ s.kupljeno = !s.kupljeno; persistShoppingList(); renderShoppingList(); }
 }
 function removeShoppingItem(id){
-  shoppingList = shoppingList.filter(x=>x.id!==id);
-  persistShoppingList();
-  renderShoppingList();
+  const s = shoppingList.find(x=>x.id===id);
+  if(!s) return;
+  showConfirm('Ukloniti "'+s.tekst+'" sa spiska za kupovinu?', ()=>{
+    shoppingList = shoppingList.filter(x=>x.id!==id);
+    persistShoppingList();
+    renderShoppingList();
+  }, 'Da, ukloni');
 }
 function clearBoughtItems(){
   shoppingList = shoppingList.filter(x=>!x.kupljeno);
