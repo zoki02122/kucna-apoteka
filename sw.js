@@ -1,5 +1,7 @@
-const CACHE_NAME = 'apoteka-cache-v36';
-const ASSETS = [
+/* Service worker: NETWORK-FIRST.
+   Uvek prvo traži najnoviju verziju sa mreže; sačuvana kopija se koristi samo kada nema interneta. */
+const CACHE_NAME = 'apoteka-cache-v37';
+const FILES_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
@@ -8,33 +10,38 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).catch(()=>{})
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(FILES_TO_CACHE)).catch(() => {})
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((names) =>
-      Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)))
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  if(event.request.method !== 'GET') return;
+  const req = event.request;
+  // samo GET zahtevi ka samoj aplikaciji; sve ostalo (npr. Gemini API) ide direktno, bez service workera
+  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request).then((networkResp) => {
-        if(networkResp && networkResp.status === 200){
-          const clone = networkResp.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+    fetch(req, { cache: 'no-store' })
+      .then((resp) => {
+        if (resp && resp.ok) {
+          const copy = resp.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
         }
-        return networkResp;
-      }).catch(() => cached);
-      return cached || fetchPromise;
-    })
+        return resp;
+      })
+      .catch(() =>
+        caches.match(req, { ignoreSearch: true }).then((cached) =>
+          cached || (req.mode === 'navigate' ? caches.match('./index.html') : undefined)
+        )
+      )
   );
 });
