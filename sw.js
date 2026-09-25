@@ -1,6 +1,6 @@
 /* Service worker: NETWORK-FIRST.
    Uvek prvo traži najnoviju verziju sa mreže; sačuvana kopija se koristi samo kada nema interneta. */
-const CACHE_NAME = 'apoteka-cache-v37';
+const CACHE_NAME = 'apoteka-cache-v38';
 const FILES_TO_CACHE = [
   './',
   './index.html',
