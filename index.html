@@ -66,6 +66,7 @@
   .set-header{ position:sticky; top:0; z-index:2; display:flex; align-items:center; gap:4px; padding:calc(10px + env(safe-area-inset-top)) 12px 10px 6px; background:var(--bg); border-bottom:1px solid var(--line); }
   .set-back{ width:44px; height:44px; border:none; background:none; color:var(--text-dim); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; flex:none; border-radius:12px; }
   .set-back:active{ background:var(--bg-card); }
+  .set-ver{ flex:none; font-size:14px; font-weight:600; color:var(--text-dim); padding-right:6px; }
   .set-title{ margin:0; padding:0; flex:1; min-width:0; font-size:20px; font-weight:600; color:var(--green-deep); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .set-body{ padding:16px 14px; max-width:560px; margin:0 auto; box-sizing:border-box; }
   .set-tile{ display:flex; align-items:center; gap:14px; width:100%; padding:18px 16px; margin:0 0 12px; background:var(--bg-card); border:1px solid var(--line); border-radius:16px; cursor:pointer; text-align:left; font-family:inherit; color:var(--text); box-sizing:border-box; }
@@ -1177,7 +1178,7 @@ function confirmDeleteItem(id, swapFromFn){
 
 /* ---------- ADD / EDIT FORM (draft-based, da ne izgubi unos pri osvezavanju zbog fotografije) ---------- */
 const KNOWN_TYPES = ['Lek na recept','Lek bez recepta','Suplement','Vitamin','Krema','Probiotik','Protein'];
-const APP_VERSION = 39; /* svaka objava: +1, isti broj u linku ?v=N i u keš imenu sw.js */
+const APP_VERSION = 40; /* svaka objava: +1, isti broj u linku ?v=N i u keš imenu sw.js */
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 const GEMINI_MODEL_SEARCH = 'gemini-3.5-flash';
 let internetSearchLoadingId = null;
@@ -2159,7 +2160,7 @@ function openSettings(){
   if(settingsCloseFn) return;
   const el = document.createElement('div'); el.className='settings-screen'; el.id='settingsScreen';
   el.innerHTML = '<div class="set-header"><button class="set-back" onclick="settingsBack()" aria-label="Nazad">'+SETTINGS_BACK_SVG+'</button>'+
-    '<h2 class="set-title serif" id="setTitle"></h2></div><div class="set-body" id="setBody"></div>';
+    '<h2 class="set-title serif" id="setTitle"></h2><span class="set-ver">verzija '+APP_VERSION+'</span></div><div class="set-body" id="setBody"></div>';
   document.body.appendChild(el);
   document.body.style.overflow='hidden';
   settingsCloseFn = ()=>{ const x=document.getElementById('settingsScreen'); if(x) x.remove(); document.body.style.overflow=''; settingsCloseFn=null; settingsSubFn=null; };
@@ -2179,8 +2180,7 @@ function renderSettingsTiles(){
     settingsTile('⏰','Upozorenje o isteku', n+' '+daniRec(n)+' pre isteka','openSettingsSub(\'expiry\')')+
     settingsTile('🎨','Tema', themeName(getTheme()),'openSettingsSub(\'theme\')')+
     settingsTile('💾','Rezervna kopija', last ? 'Poslednja: '+lastBackupDisplay() : 'Još nije napravljena','openSettingsSub(\'backup\')')+
-    settingsTile('🔑','Gemini API ključ', getApiKey() ? 'Ključ je unet' : 'Ključ nije unet','openSettingsSub(\'apikey\')')+
-    '<div class="field-hint" style="text-align:center; margin-top:18px; opacity:.7;">verzija '+APP_VERSION+'</div>');
+    settingsTile('🔑','Gemini API ključ', getApiKey() ? 'Ključ je unet' : 'Ključ nije unet','openSettingsSub(\'apikey\')'));
 }
 function openSettingsSub(key){
   if(!settingsCloseFn || settingsSubFn) return;
