@@ -534,6 +534,16 @@ html[data-theme="ponoc"]{
 [data-theme="ponoc"] .backup-reminder-row button{ background:#000; border:1px solid var(--coral); color:var(--coral); }
 [data-theme="ponoc"] #statusBanner.info{ background:var(--g-grad); color:var(--on-accent); }
 [data-theme="ponoc"] #undoToast{ background:var(--card-shine), var(--bg-card); border:1px solid var(--line); color:var(--text); }
+/* v41: okvir iskačućih prozora u boji teme; polje u fokusu mirno sivo; osenčen označen tekst (kao Troškovi v5) */
+:root{ --frame-acc:var(--green-deep); --focus-line:#A3A7AF; }
+[data-theme="ponoc"]{ --frame-acc:var(--accent); }
+[data-theme="ponoc"], [data-theme="crna"]{ --focus-line:#6E7178; }
+.modal-backdrop .modal:not(.full){ border:1px solid color-mix(in srgb, var(--frame-acc) 60%, transparent); }
+.home-sheet{ border:1px solid color-mix(in srgb, var(--frame-acc) 60%, transparent); border-bottom:none; }
+input:focus, textarea:focus, select:focus{ outline:1.5px solid var(--focus-line) !important; outline-offset:-1px; }
+:is(.search-wrap, .entry-input-wrap) :is(input,textarea):focus{ outline:none !important; }
+.search-wrap:focus-within, .entry-input-wrap:focus-within{ box-shadow:0 0 0 1.5px var(--focus-line) !important; }
+input::selection, textarea::selection{ background:color-mix(in srgb, var(--frame-acc) 40%, transparent); }
 </style>
 </head>
 <body>
