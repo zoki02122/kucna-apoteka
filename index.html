@@ -544,6 +544,16 @@ input:focus, textarea:focus, select:focus{ outline:1.5px solid var(--focus-line)
 :is(.search-wrap, .entry-input-wrap) :is(input,textarea):focus{ outline:none !important; }
 .search-wrap:focus-within, .entry-input-wrap:focus-within{ box-shadow:0 0 0 1.5px var(--focus-line) !important; }
 input::selection, textarea::selection{ background:color-mix(in srgb, var(--frame-acc) 40%, transparent); }
+/* v43: „Izmeni / Dodaj stavku“ preko celog ekrana — naslov i dugmad stalno vidljivi, polja se listaju između */
+.modal.form-full{ position:fixed; top:0; bottom:0; left:0; right:0; margin:0 auto; transform:none; width:100%; max-width:520px; height:100%; max-height:none; border-radius:0; padding:0; display:flex; flex-direction:column; overflow:hidden; box-shadow:none; border-top:none !important; border-bottom:none !important; }
+.form-full .ff-head{ flex:none; display:flex; align-items:center; gap:10px; padding:14px 16px 12px; border-bottom:1px solid var(--line); }
+.form-full .ff-head h2{ flex:1; min-width:0; margin:0; padding:0; }
+.form-full .ff-head .modal-close-x{ position:static; flex:none; width:36px; height:36px; }
+.form-full .ff-body{ flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:16px 18px 10px; }
+.form-full .ff-foot{ flex:none; margin:0; padding:12px 16px calc(14px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); }
+.rok-pick{ display:flex; gap:10px; }
+.rok-pick select:first-child{ flex:1.5; min-width:0; }
+.rok-pick select:last-child{ flex:1; min-width:0; }
 </style>
 </head>
 <body>
@@ -1221,7 +1231,7 @@ function confirmDeleteItem(id, swapFromFn){
 
 /* ---------- ADD / EDIT FORM (draft-based, da ne izgubi unos pri osvezavanju zbog fotografije) ---------- */
 const KNOWN_TYPES = ['Lek na recept','Lek bez recepta','Suplement','Vitamin','Krema','Probiotik','Protein'];
-const APP_VERSION = 42; /* svaka objava: +1, isti broj u linku ?v=N i u keš imenu sw.js */
+const APP_VERSION = 43; /* svaka objava: +1, isti broj u linku ?v=N i u keš imenu sw.js */
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 const GEMINI_MODEL_SEARCH = 'gemini-3.5-flash';
 let internetSearchLoadingId = null;
@@ -1656,6 +1666,29 @@ function openItemForm(editId, swapFromFn){
   }
 }
 function updateDraft(field, value){ formDraft[field] = value; }
+/* v43: rok — sopstveni izbor meseca i godine. Chrome-ovo polje type="month" na nekim telefonima ispisuje „2026-M08“
+   (to iscrtava sam pregledač, ne naš kod), pa tekst sada uvek pišemo mi. Upisuje se 'GGGG-MM' kao i ranije. */
+const MESECI = ['januar','februar','mart','april','maj','jun','jul','avgust','septembar','oktobar','novembar','decembar'];
+let rokPartM = '', rokPartY = '';
+function rokPickerHtml(){
+  const has = /^\d{4}-\d{2}/.test(formDraft.rok||'');
+  const m = has ? formDraft.rok.slice(5,7) : rokPartM;
+  const y = has ? formDraft.rok.slice(0,4) : rokPartY;
+  const now = new Date().getFullYear();
+  const years = []; for(let g=now-3; g<=now+12; g++) years.push(String(g));
+  if(y && years.indexOf(y)<0) years.push(y), years.sort();
+  return '<div class="rok-pick">'+
+    '<select id="fRokM" onchange="setRokPart()" aria-label="Mesec"><option value="">mesec</option>'+
+      MESECI.map((n,i)=>{ const v=String(i+1).padStart(2,'0'); return '<option value="'+v+'"'+(v===m?' selected':'')+'>'+v+' · '+n+'</option>'; }).join('')+'</select>'+
+    '<select id="fRokY" onchange="setRokPart()" aria-label="Godina"><option value="">godina</option>'+
+      years.map(g=>'<option value="'+g+'"'+(g===y?' selected':'')+'>'+g+'</option>').join('')+'</select>'+
+    '</div>';
+}
+function setRokPart(){
+  rokPartM = document.getElementById('fRokM').value;
+  rokPartY = document.getElementById('fRokY').value;
+  formDraft.rok = (rokPartM && rokPartY) ? rokPartY+'-'+rokPartM : '';
+}
 /* ---------- Pouzdano brisanje u poljima forme (Android Chrome + Gboard) ----------
    Preneto iz aplikacija Stanje guma i Cenovnik (proveren kod).
    fieldOriginal: poznata DOBRA vrednost polja, upisana pri svakom iscrtavanju forme
@@ -1727,9 +1760,12 @@ function renderItemForm(){
   const warningsHtml = (!formAnalyzing && formAiWarnings.length>0) ?
     '<div class="field-warn" style="margin-bottom:14px;">⚠ AI nije prepoznao: '+formAiWarnings.join(', ')+' — dopuni ručno.</div>' : '';
 
-  b.innerHTML = '<div class="modal">'+
-    '<button class="modal-close-x" onclick="closeItemForm()">✕</button>'+
-    '<h2 class="serif">'+(formEditId?'Izmeni stavku':'Dodaj stavku')+'</h2>'+
+  if(isNew){ rokPartM = ''; rokPartY = ''; }
+  const oldBody = b.querySelector('.ff-body'); const keepScroll = oldBody ? oldBody.scrollTop : 0;
+  b.innerHTML = '<div class="modal form-full">'+
+    '<div class="ff-head"><h2 class="serif">'+(formEditId?'Izmeni stavku':'Dodaj stavku')+'</h2>'+
+    '<button class="modal-close-x" onclick="closeItemForm()" aria-label="Zatvori">✕</button></div>'+
+    '<div class="ff-body">'+
     '<div class="field">'+photoSectionHtml+leafletBtnHtml+leafletQueueHtml+analyzingHtml+warningsHtml+'</div>'+
     '<div class="field"><label>Naziv</label><input id="fNaziv" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="'+escapeHtml(formDraft.naziv)+'" oninput="updateDraft(\'naziv\',this.value)" placeholder="npr. Brufen 400mg"></div>'+
     '<div class="field"><label>Tip</label><input id="fTip" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" list="typeList" value="'+escapeHtml(formDraft.tip)+'" oninput="updateDraft(\'tip\',this.value)" placeholder="izaberi ili upiši svoj">'+
@@ -1738,11 +1774,13 @@ function renderItemForm(){
     '<datalist id="catList">'+cats.map(c=>'<option value="'+escapeHtml(c)+'">').join('')+'</datalist></div>'+
     '<div class="field"><label>Način upotrebe</label><textarea id="fDoziranje" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="updateDraft(\'doziranje\',this.value)" placeholder="npr. 1 tableta na 8h, posle jela">'+escapeHtml(formDraft.doziranje)+'</textarea></div>'+
     '<div class="field"><label>Napomena / upozorenje</label><textarea id="fNapomena" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="updateDraft(\'napomena\',this.value)" placeholder="npr. ne uzimati na prazan stomak">'+escapeHtml(formDraft.napomena)+'</textarea></div>'+
-    '<div class="field"><label>Rok trajanja (mesec i godina)</label><input id="fRok" type="month" value="'+(formDraft.rok ? formDraft.rok.slice(0,7) : '')+'" oninput="updateDraft(\'rok\',this.value)"></div>'+
-    '<div class="modal-actions">'+
+    '<div class="field"><label>Rok trajanja (mesec i godina)</label>'+rokPickerHtml()+'</div>'+
+    '</div>'+
+    '<div class="modal-actions ff-foot">'+
     '<button class="cancel-btn" onclick="closeItemForm()">Otkaži</button>'+
     '<button class="save-btn" onclick="saveItemForm()">Sačuvaj</button>'+
     '</div></div>';
+  if(keepScroll){ const nb = b.querySelector('.ff-body'); if(nb) nb.scrollTop = keepScroll; }
 
   if(isNew){
     document.body.appendChild(b);
