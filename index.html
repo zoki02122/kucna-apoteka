@@ -1177,6 +1177,7 @@ function confirmDeleteItem(id, swapFromFn){
 
 /* ---------- ADD / EDIT FORM (draft-based, da ne izgubi unos pri osvezavanju zbog fotografije) ---------- */
 const KNOWN_TYPES = ['Lek na recept','Lek bez recepta','Suplement','Vitamin','Krema','Probiotik','Protein'];
+const APP_VERSION = 39; /* svaka objava: +1, isti broj u linku ?v=N i u keš imenu sw.js */
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 const GEMINI_MODEL_SEARCH = 'gemini-3.5-flash';
 let internetSearchLoadingId = null;
@@ -1452,6 +1453,75 @@ async function triggerAITextRead(rawText){
   renderItemForm();
 }
 
+/* ---------- AI: OBRAZAC ODGOVORA (šema) za lek iz teksta, sa slike i uputstvo ----------
+   Zvanična strana „structured-output“ piše 'application/json', a server za responseFormat.text traži
+   nabrojanu vrednost APPLICATION_JSON (provereno u Arhivi i Troškovima). Zato redom:
+   1) responseFormat + APPLICATION_JSON, 2) responseMimeType + responseJsonSchema, 3) stari zahtev bez šeme.
+   Sledeći pokušaj samo kad server ODBIJE zahtev (400); 400 zbog neispravnog ključa se ne ponavlja. */
+function saveAiFormatStatus(mode, rejections){
+  lsSet('apoteka:aiFormatStatus', JSON.stringify({ mode: mode, reasons: rejections || [], at: new Date().toISOString() }));
+}
+function aiFormatStatusHtml(){
+  const r = lsGet('apoteka:aiFormatStatus');
+  if(!r) return '';
+  let st; try{ st = JSON.parse(r.value); }catch(e){ return ''; }
+  if(!st || !st.mode) return '';
+  let txt = st.mode==='bez' ? 'poslednji AI unos: obrazac odgovora nije prihvaćen, korišćen rezervni način.' : 'poslednji AI unos: obrazac odgovora primenjen ✓';
+  if(st.mode!=='format' && st.reasons && st.reasons.length) txt += ' razlog: '+st.reasons.join(' | ');
+  return '<div class="field-hint" id="aiFormatHint" style="margin-top:14px;">'+escapeHtml(txt)+'</div>';
+}
+async function geminiStructuredRequest(sys, parts, schema, maxOutputTokens, timeoutMs){
+  const apiKey = getApiKey();
+  const attempts = [
+    { mode:'format', gc:{ responseFormat:{ text:{ mimeType:'APPLICATION_JSON', schema: schema } }, maxOutputTokens: maxOutputTokens } },
+    { mode:'jsonSchema', gc:{ responseMimeType:'application/json', responseJsonSchema: schema, maxOutputTokens: maxOutputTokens } },
+    { mode:'bez', gc:{ responseMimeType:'application/json', maxOutputTokens: maxOutputTokens } }
+  ];
+  const rejections = [];
+  let resp, usedMode = '';
+  for(let i=0; i<attempts.length; i++){
+    const controller = new AbortController();
+    const timeoutId = setTimeout(()=>controller.abort(), timeoutMs);
+    try{
+      resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL+':generateContent', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'x-goog-api-key':apiKey },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: sys }] },
+          contents: [{ role:'user', parts: parts }],
+          generationConfig: attempts[i].gc
+        }),
+        signal: controller.signal
+      });
+    } catch(fetchErr){
+      if(fetchErr.name==='AbortError') throw new Error('Server nije odgovorio na vreme. Proveri internet i probaj ponovo.');
+      throw new Error('Ne mogu da se povežem sa AI servisom: '+fetchErr.message);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    if(resp.ok){ usedMode = attempts[i].mode; break; }
+    const errBody = await resp.text().catch(()=> '');
+    if(resp.status===400 && /API key/i.test(errBody)) throw new Error('Gemini API ključ nije važeći. Proveri ga u Podešavanjima.');
+    if(resp.status===401) throw new Error('Google nije prihvatio ključ (401 - neautorizovan). Proveri da li si ključ tačno nalepio u Podešavanjima, ili napravi nov ključ na aistudio.google.com.');
+    if(resp.status===400 && i < attempts.length-1){
+      let msg = errBody;
+      try{ const j = JSON.parse(errBody); if(j && j.error && j.error.message) msg = j.error.message; }catch(e){}
+      rejections.push(String(msg).slice(0,300));
+      continue;
+    }
+    throw new Error('Gemini API greška ('+resp.status+'): '+errBody.slice(0,180));
+  }
+  saveAiFormatStatus(usedMode, rejections);
+  const data = await resp.json();
+  const candidate = data.candidates && data.candidates[0];
+  if(!candidate) throw new Error('Gemini nije vratio rezultat.');
+  const raw = (candidate.content && candidate.content.parts && candidate.content.parts[0] && candidate.content.parts[0].text) || '';
+  let result;
+  try{ result = JSON.parse(raw); }catch(e){ throw new Error('Ne mogu da protumačim AI odgovor.'); }
+  if(Array.isArray(result)) result = result[0] || {};
+  return result || {};
+}
+
 async function callGeminiForMedicineFromText(rawText){
   const apiKey = getApiKey();
   const sys = 'Korisnik je izgovorio ili ukucao rečenicu o leku/suplementu/vitaminu za kućnu apoteku (glasovni ili tekstualni unos). Tekst: "'+rawText+'". '+
@@ -1464,37 +1534,7 @@ async function callGeminiForMedicineFromText(rawText){
     '"rok": ako je pomenut datum isteka roka, u formatu GGGG-MM (samo mesec i godina - lekovi obično imaju odštampan samo mesec/godinu isteka, ne tačan dan; ako je izuzetno pomenut i tačan dan, ipak vrati samo GGGG-MM), inače null}. '+
     'VAŽNO: ne izmišljaj ništa što nije eksplicitno pomenuto u tekstu — ako nešto nije rečeno, vrati prazan string (ili null za rok).';
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(()=>controller.abort(), 30000);
-  let resp;
-  try{
-    resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL+':generateContent', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'x-goog-api-key':apiKey },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: sys }] },
-        contents: [{ role:'user', parts: [{ text: rawText }] }],
-        generationConfig: { responseMimeType:'application/json', maxOutputTokens: 800 }
-      }),
-      signal: controller.signal
-    });
-  } catch(fetchErr){
-    clearTimeout(timeoutId);
-    if(fetchErr.name==='AbortError') throw new Error('Server nije odgovorio na vreme. Probaj ponovo.');
-    throw new Error('Ne mogu da se povežem sa AI servisom: '+fetchErr.message);
-  }
-  clearTimeout(timeoutId);
-  if(!resp.ok){
-    const errBody = await resp.text().catch(()=> '');
-    if(resp.status===401) throw new Error('Google nije prihvatio ključ (401 - neautorizovan). Proveri ga u Podešavanjima.');
-    throw new Error('Gemini API greška ('+resp.status+'): '+errBody.slice(0,180));
-  }
-  const data = await resp.json();
-  const candidate = data.candidates && data.candidates[0];
-  if(!candidate) throw new Error('Gemini nije vratio rezultat.');
-  const raw = (candidate.content && candidate.content.parts && candidate.content.parts[0] && candidate.content.parts[0].text) || '';
-  let result;
-  try{ result = JSON.parse(raw); }catch(e){ throw new Error('Ne mogu da protumačim AI odgovor.'); }
+  const result = await geminiStructuredRequest(sys, [{ text: rawText }], { type:'object', properties:{naziv:{ type:'string' },tip:{ type:'string' },doziranje:{ type:'string' },kategorija:{ type:'string' },napomena:{ type:'string' },rok:{ type:'string', description:'GGGG-MM, izostavi ako rok nije pomenut/čitljiv' }}, required:['naziv','tip','doziranje','kategorija','napomena'] }, 800, 30000);
   return {
     naziv: (result.naziv||'').trim(),
     tip: (result.tip||'').trim(),
@@ -1913,38 +1953,7 @@ async function callGeminiForMedicine(dataUrl){
     '"rok": datum isteka roka trajanja u formatu GGGG-MM (SAMO mesec i godina, bez dana - na pakovanjima lekova rok obicno stoji odstampan samo kao MM/GGGG, npr. "02/2028" postaje "2028-02") SAMO ako je jasno napisan i citljiv na slici, inace null}. '+
     'VAZNO: nikad ne izmisljaj rok trajanja ako nije jasno citljiv - u tom slucaju vrati null za "rok". Ne izmisljaj ni ostala polja - ako nesto nije vidljivo, vrati prazan string.';
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(()=>controller.abort(), 30000);
-  let resp;
-  try{
-    resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL+':generateContent', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'x-goog-api-key':apiKey },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: sys }] },
-        contents: [{ role:'user', parts: [{ inlineData: { mimeType, data: base64Data } }] }],
-        generationConfig: { responseMimeType:'application/json', maxOutputTokens: 2000 }
-      }),
-      signal: controller.signal
-    });
-  } catch(fetchErr){
-    clearTimeout(timeoutId);
-    if(fetchErr.name==='AbortError') throw new Error('Server nije odgovorio na vreme. Proveri internet i probaj ponovo.');
-    throw new Error('Ne mogu da se povežem sa AI servisom: '+fetchErr.message);
-  }
-  clearTimeout(timeoutId);
-  if(!resp.ok){
-    const errBody = await resp.text().catch(()=> '');
-    if(resp.status===400 && /API key/i.test(errBody)) throw new Error('Gemini API ključ nije važeći. Proveri ga u Podešavanjima.');
-    if(resp.status===401) throw new Error('Google nije prihvatio ključ (401 - neautorizovan). Proveri da li si ključ tačno nalepio u Podešavanjima, ili napravi nov ključ na aistudio.google.com.');
-    throw new Error('Gemini API greška ('+resp.status+'): '+errBody.slice(0,180));
-  }
-  const data = await resp.json();
-  const candidate = data.candidates && data.candidates[0];
-  if(!candidate) throw new Error('Gemini nije vratio rezultat.');
-  const raw = (candidate.content && candidate.content.parts && candidate.content.parts[0] && candidate.content.parts[0].text) || '';
-  let result;
-  try{ result = JSON.parse(raw); }catch(e){ throw new Error('Ne mogu da protumačim AI odgovor.'); }
+  const result = await geminiStructuredRequest(sys, [{ inlineData: { mimeType, data: base64Data } }], { type:'object', properties:{naziv:{ type:'string' },tip:{ type:'string' },doziranje:{ type:'string' },kategorija:{ type:'string' },rok:{ type:'string', description:'GGGG-MM, izostavi ako rok nije pomenut/čitljiv' }}, required:['naziv','tip','doziranje','kategorija'] }, 2000, 30000);
   return {
     naziv: (result.naziv||'').trim(),
     tip: (result.tip||'').trim(),
@@ -2010,37 +2019,7 @@ async function callGeminiForLeaflet(dataUrls){
     '"prosireno": detaljniji sažetak u nekoliko kratkih rečenica ili kratkih stavki, sastavljen iz SVIH priloženih slika zajedno - OBAVEZNO navedi SVE indikacije/situacije za koje se proizvod koristi (izvuci ih iz dela "Indikacije"/"čemu je namenjen", ne izostavljaj nijednu pomenutu situaciju, npr. "zubobolja, menstrualni bolovi, bolovi u mišićima i zglobovima" umesto samo "protiv bolova"), zatim način upotrebe, glavne mere opreza/kontraindikacije, i čuvanje leka ako je pomenuto; i dalje bez pravnog žargona i bez prepisivanja celih pasusa, na srpskom jeziku, ili prazan string ako nema dovoljno čitljivog teksta}. '+
     'VAŽNO: polja "napomena" i "kategorija" neka budu kratka (ne prepisuj pasuse teksta); polje "doziranje" neka bude sažeto ALI kompletno - uključi način pripreme i starosno ograničenje ako postoje, to je praktično bitno; polje "prosireno" sme da bude najopširnije jer tamo idu sve indikacije detaljno. Ne izmišljaj ništa što nije napisano u dokumentu(ima). Prevedi na srpski ako je tekst na drugom jeziku.';
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(()=>controller.abort(), 35000);
-  let resp;
-  try{
-    resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL+':generateContent', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'x-goog-api-key':apiKey },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: sys }] },
-        contents: [{ role:'user', parts: parts }],
-        generationConfig: { responseMimeType:'application/json', maxOutputTokens: 1500 }
-      }),
-      signal: controller.signal
-    });
-  } catch(fetchErr){
-    clearTimeout(timeoutId);
-    if(fetchErr.name==='AbortError') throw new Error('Server nije odgovorio na vreme. Probaj ponovo.');
-    throw new Error('Ne mogu da se povežem sa AI servisom: '+fetchErr.message);
-  }
-  clearTimeout(timeoutId);
-  if(!resp.ok){
-    const errBody = await resp.text().catch(()=> '');
-    if(resp.status===401) throw new Error('Google nije prihvatio ključ (401 - neautorizovan). Proveri ga u Podešavanjima.');
-    throw new Error('Gemini API greška ('+resp.status+'): '+errBody.slice(0,180));
-  }
-  const data = await resp.json();
-  const candidate = data.candidates && data.candidates[0];
-  if(!candidate) throw new Error('Gemini nije vratio rezultat.');
-  const raw = (candidate.content && candidate.content.parts && candidate.content.parts[0] && candidate.content.parts[0].text) || '';
-  let result;
-  try{ result = JSON.parse(raw); }catch(e){ throw new Error('Ne mogu da protumačim AI odgovor.'); }
+  const result = await geminiStructuredRequest(sys, parts, { type:'object', properties:{naziv:{ type:'string' },tip:{ type:'string' },doziranje:{ type:'string' },kategorija:{ type:'string' },napomena:{ type:'string' },prosireno:{ type:'string' },rok:{ type:'string', description:'GGGG-MM, izostavi ako rok nije pomenut/čitljiv' }}, required:['naziv','tip','doziranje','kategorija','napomena','prosireno'] }, 1500, 35000);
   return {
     naziv: (result.naziv||'').trim(),
     tip: (result.tip||'').trim(),
@@ -2200,7 +2179,8 @@ function renderSettingsTiles(){
     settingsTile('⏰','Upozorenje o isteku', n+' '+daniRec(n)+' pre isteka','openSettingsSub(\'expiry\')')+
     settingsTile('🎨','Tema', themeName(getTheme()),'openSettingsSub(\'theme\')')+
     settingsTile('💾','Rezervna kopija', last ? 'Poslednja: '+lastBackupDisplay() : 'Još nije napravljena','openSettingsSub(\'backup\')')+
-    settingsTile('🔑','Gemini API ključ', getApiKey() ? 'Ključ je unet' : 'Ključ nije unet','openSettingsSub(\'apikey\')'));
+    settingsTile('🔑','Gemini API ključ', getApiKey() ? 'Ključ je unet' : 'Ključ nije unet','openSettingsSub(\'apikey\')')+
+    '<div class="field-hint" style="text-align:center; margin-top:18px; opacity:.7;">verzija '+APP_VERSION+'</div>');
 }
 function openSettingsSub(key){
   if(!settingsCloseFn || settingsSubFn) return;
@@ -2231,7 +2211,8 @@ function openSettingsSub(key){
     body='<div class="field"><label>Google Gemini API ključ</label>'+
       '<input id="sApiKey" type="password" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" value="'+escapeHtml(getApiKey())+'" placeholder="AIza..."></div>'+
       '<div class="field-hint" style="margin-bottom:18px;">Ključ se čuva samo na ovom telefonu, u ovom pregledaču. Napraviš ga besplatno na aistudio.google.com (bez kartice) → Get API key. Potreban je da bi čitanje fotografije pakovanja radilo.</div>'+
-      '<div class="modal-actions"><button class="save-btn" onclick="saveApiKeySetting()">Sačuvaj</button></div>';
+      '<div class="modal-actions"><button class="save-btn" onclick="saveApiKeySetting()">Sačuvaj</button></div>'+
+      aiFormatStatusHtml();
   } else return;
   setSettingsView(title, body);
   settingsSubFn = ()=>{ settingsSubFn=null; renderSettingsTiles(); };
