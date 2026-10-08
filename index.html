@@ -112,10 +112,10 @@
   .home-sq .sq-box{ width:54px; height:54px; border-radius:16px; background:var(--bg-elevated); border:1px solid var(--line); color:var(--amber); display:flex; align-items:center; justify-content:center; position:relative; }
   .home-sq.sq-main .sq-box{ background:var(--green-deep); border-color:var(--green-deep); color:var(--on-accent); box-shadow:inset 0 0 0 3px var(--green-deep), inset 0 0 0 4.5px var(--amber-line); }
   .home-sq .cart-dot{ top:9px; right:9px; border-color:var(--bg-elevated); }
-  .exp-row{ display:flex; align-items:center; gap:10px; width:100%; margin:0 0 12px; padding:12px 14px; border-radius:16px; border:1px solid var(--amber-line); background:var(--amber-pale); color:var(--amber); font-family:inherit; cursor:pointer; text-align:left; }
-  .exp-row.has-expired{ border-color:var(--coral-line); background:var(--coral-pale); color:var(--coral); }
-  .exp-row .er-t{ flex:1; font-size:15px; font-weight:700; }
-  .exp-row .er-n{ font-size:13px; font-weight:600; white-space:nowrap; }
+  .bell-btn{ position:relative; }
+  .bell-btn .bell-badge{ position:absolute; top:-4px; right:-4px; min-width:18px; height:18px; padding:0 5px; box-sizing:border-box; border-radius:9px; background:var(--coral); color:#fff; font-size:11px; font-weight:700; line-height:18px; text-align:center; font-family:inherit; }
+  .bell-btn.bell-on{ background:var(--green-deep) !important; color:var(--on-accent) !important; border-color:var(--green-deep) !important; }
+  @media (max-width:370px){ .home-head{ gap:6px; } .home-head .icon-btn{ width:34px !important; height:34px !important; } [data-theme="koza"] .home-head .app-title{ font-size:25px; } }
   .search-wrap .search-x{ flex:none; width:36px; height:36px; border:none; background:none; color:var(--text-dim); font-size:18px; cursor:pointer; }
   .home-search{ margin:0 0 12px; }
   .home-sheet-bg{ position:fixed; inset:0; z-index:60; background:rgba(20,18,12,.45); display:flex; align-items:flex-end; justify-content:center; }
@@ -608,7 +608,6 @@ const HOME_IC = {
   gallery: HI('<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M20.5 16l-5-5-9 8.5"/>',22),
   doc: HI('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>',22),
   mic: HI('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>',22),
-  hourglass: HI('<path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"/>',20),
   back: HI('<path d="M15 18l-6-6 6-6"/>',22)
 };
 function lekRec(n){ const d=n%10, s=n%100; if(d===1 && s!==11) return 'lek'; if(d>=2 && d<=4 && (s<12 || s>14)) return 'leka'; return 'lekova'; }
@@ -1011,15 +1010,11 @@ function render(){
   });
   const expiredCount = expiring.filter(it=> expiryStatus(it).key==='expired').length;
   const soonCount = expiring.length - expiredCount;
+  const expiryTitle = expiredCount>0 ? (soonCount>0 ? 'Isteklo i ističe' : 'Isteklo') : 'Ističe uskoro';
   const expiryTitleParts = [];
   if(soonCount>0) expiryTitleParts.push('Ističe uskoro ('+soonCount+')');
   if(expiredCount>0) expiryTitleParts.push('Isteklo ('+expiredCount+')');
 
-  const expiryHtml = (expiryOnly || (!searchOpen && expiring.length>0)) ? (
-    '<button class="exp-row'+(expiredCount>0?' has-expired':'')+'" onclick="toggleExpiryOnly()">'+HOME_IC.hourglass+
-    '<span class="er-t">'+(expiredCount>0 ? (soonCount>0 ? 'Isteklo i ističe' : 'Isteklo') : 'Ističe uskoro')+'</span>'+
-    '<span class="er-n">'+(expiryOnly ? '✕' : expiring.length+' '+lekRec(expiring.length)+' ›')+'</span></button>'
-  ) : '';
 
   let listHtml;
   function groupKeyForSort(it){
@@ -1031,7 +1026,7 @@ function render(){
   if(filtered.length===0){
     listHtml = '<div class="empty">'+(qWords.length ? 'Nema stavki koje odgovaraju pretrazi "'+escapeHtml(searchQuery)+'".' : (expiryOnly ? 'Nijedan lek ne ističe uskoro.' : 'Kućna apoteka je prazna.<br>Dodaj prvi lek ili suplement dugmetom „Dodaj“ gore.'))+'</div>';
   } else if(settings.viewMode==='mreza'){
-    listHtml = '<div class="section-label">'+(expiryOnly?'Ističe uskoro':'Sve stavke')+' ('+filtered.length+')</div>'+
+    listHtml = '<div class="section-label">'+(expiryOnly?expiryTitle:'Sve stavke')+' ('+filtered.length+')</div>'+
       '<div class="grid-list">'+
       filtered.map(it=>{
         const s = expiryStatus(it);
@@ -1046,7 +1041,7 @@ function render(){
       '</div>';
   } else {
     let lastGroup = null;
-    listHtml = '<div class="section-label">'+(expiryOnly?'Ističe uskoro':'Sve stavke')+' ('+filtered.length+')</div>' +
+    listHtml = '<div class="section-label">'+(expiryOnly?expiryTitle:'Sve stavke')+' ('+filtered.length+')</div>' +
       filtered.map(it=>{
         const s = expiryStatus(it);
         const badgeClass = s.key==='ok' ? 'badge-ok' : s.key==='soon' ? 'badge-soon' : s.key==='expired' ? 'badge-expired' : 'badge-missing';
@@ -1068,6 +1063,8 @@ function render(){
     '<div class="home-head"><span class="home-mark">'+HOME_IC.mark+'</span>'+
     '<div class="app-title serif">Kućna apoteka</div>'+
     '<button class="icon-btn" onclick="toggleViewMode()" title="Promeni prikaz">'+(settings.viewMode==='mreza'?ic('☰','list'):ic('▦','grid'))+'</button>'+
+    '<button class="icon-btn bell-btn'+(expiryOnly?' bell-on':'')+'" onclick="toggleExpiryOnly()" title="Rokovi" aria-label="Rokovi">'+ic('🔔','bell')+
+      (expiring.length>0 ? '<span class="bell-badge">'+expiring.length+'</span>' : '')+'</button>'+
     '<button class="icon-btn" onclick="openSettings()" title="Podešavanja">'+ic('⚙','gear')+'</button>'+
     '</div>'+
     (searchOpen
@@ -1079,7 +1076,6 @@ function render(){
         '<button class="home-sq" onclick="openShoppingList()"><span class="sq-box">'+HOME_IC.cart+(shoppingList.some(x=>!x.kupljeno)?'<span class="cart-dot"></span>':'')+'</span>Kupovina</button>'+
         '<button class="home-sq" onclick="openChatMode()"><span class="sq-box">'+HOME_IC.ai+'</span>AI</button>'+
         '</div>')+
-    expiryHtml+
     '</div>'+
     '<div class="list-area">'+listHtml+'</div>';
 
@@ -1225,7 +1221,7 @@ function confirmDeleteItem(id, swapFromFn){
 
 /* ---------- ADD / EDIT FORM (draft-based, da ne izgubi unos pri osvezavanju zbog fotografije) ---------- */
 const KNOWN_TYPES = ['Lek na recept','Lek bez recepta','Suplement','Vitamin','Krema','Probiotik','Protein'];
-const APP_VERSION = 41; /* svaka objava: +1, isti broj u linku ?v=N i u keš imenu sw.js */
+const APP_VERSION = 42; /* svaka objava: +1, isti broj u linku ?v=N i u keš imenu sw.js */
 const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 const GEMINI_MODEL_SEARCH = 'gemini-3.5-flash';
 let internetSearchLoadingId = null;
@@ -2231,6 +2227,7 @@ const ICONS = {
   plus:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
   search:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>',
   close:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  bell:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2H4.5z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>',
   gear:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   swap:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h12l-3-3M17 17H5l3 3"/></svg>',
   chat:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.1A8 8 0 1 1 20 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/></svg>',
@@ -2341,7 +2338,7 @@ function openHelpScreen(){
     { t:'Dodavanje leka', c:'Gore dugme "Dodaj": Slikaj pakovanje, Iz galerije ili Dokument — AI pročita naziv, dozu i rok. "Ukucaj ili izgovori" otvara polje: ukucaj ili izgovori (mikrofon na tastaturi) i dodirni Dodaj — AI će sam rasporediti podatke po poljima. Fotografiju možeš i da opsečeš pre slanja, ili da preskočiš opsecanje.' },
     { t:'Skeniranje uputstva', c:'U formi za dodavanje/izmenu, dugme "Skeniraj uputstvo za upotrebu" čita papirić iz kutije (ili PDF) — popunjava način upotrebe, napomene, rok i detaljnije informacije. Ne čuva se kao slika stavke, samo se pročita.' },
     { t:'Nemaš pakovanje pri ruci?', c:'Slika i uputstvo ne moraju biti tvoje sopstvene fotografije — mogu doći odakle god. Kroz Google Objektiv (Google Lens) pretraži lek, sačuvaj sliku pakovanja, i ako Objektiv ponudi uputstvo za upotrebu, traži da ga napravi kao PDF i preuzmi ga. Oboje onda ubaciš u aplikaciju preko Galerije i Dokumenata — isto kao da si sam slikao. Ovo je posebno korisno dok "Pretraži uputstvo na internetu" u aplikaciji ne radi.' },
-    { t:'Šta ističe uskoro', c:'Red "Ističe uskoro" ispod dugmadi pokazuje koliko lekova ističe ili je već isteklo. Dodir prikazuje samo njih; ✕ ili korak nazad vraća sve. Koliko dana unapred te upozorava podešava se u ovom istom meniju (Podešavanja).' },
+    { t:'Šta ističe uskoro', c:'Zvonce gore, pored podešavanja: crveni broj na njemu kaže koliko lekova ističe ili je već isteklo. Dodir na zvonce prikazuje samo njih; ponovni dodir ili korak nazad vraća sve. Koliko dana unapred te upozorava podešava se u ovom istom meniju (Podešavanja).' },
     { t:'Pretraga i sortiranje', c:'"Pretraži" pretražuje naziv, tip, kategoriju i napomenu — ignoriše veliko/malo slovo i kvačice. "Sortiraj" nudi Naziv / Kategorija / Tip / Datum isteka; kod Kategorije i Tipa se pojave i grupni naslovi.' },
     { t:'Prikaz liste', c:'Ikonica ▦/☰ menja prikaz između liste (detaljnije) i mreže (kompaktnije, dve kolone). Klik na sliku leka otvara je preko celog ekrana; klik na ostatak kartice otvara detalje.' },
     { t:'AI ćaskanje', c:'Dugme "AI" gore — postavi pitanje o svojoj apoteci ("Šta imam za glavobolju?", "Šta mi ističe?"). AI može i da predloži izmenu ili brisanje, ali ništa se ne menja dok sam ne potvrdiš.' },
